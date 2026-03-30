@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SetLoop — Privacy Policy</title>
+<style>
+  :root {
+    --bg: #0A0A0A;
+    --surface: #141414;
+    --border: rgba(255,255,255,0.06);
+    --text: #E8E8E8;
+    --text2: rgba(255,255,255,0.5);
+    --text3: rgba(255,255,255,0.25);
+    --orange: #F59E42;
+    --green: #4ADE80;
+    --green-bg: rgba(74,222,128,0.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 620px; margin: 0 auto; padding: 60px 24px 80px; }
+
+  .back { display: inline-block; font-size: 13px; color: var(--text3); text-decoration: none; margin-bottom: 32px; transition: color 0.15s; }
+  .back:hover { color: var(--text2); }
+
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 6px; }
+  h1 span { color: var(--orange); }
+  .updated { font-size: 13px; color: var(--text3); margin-bottom: 40px; }
+
+  .tldr {
+    padding: 16px 20px;
+    background: var(--green-bg);
+    border: 1px solid rgba(74,222,128,0.1);
+    border-radius: 12px;
+    margin-bottom: 40px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--green);
+  }
+
+  h2 { font-size: 16px; font-weight: 600; margin: 32px 0 12px; letter-spacing: -0.01em; }
+  p { font-size: 14px; color: var(--text2); line-height: 1.7; margin-bottom: 12px; }
+  ul { list-style: none; padding: 0; margin-bottom: 16px; }
+  li { font-size: 14px; color: var(--text2); line-height: 1.7; padding-left: 16px; position: relative; margin-bottom: 4px; }
+  li::before { content: "—"; position: absolute; left: 0; color: var(--text3); }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; }
+  th, td { text-align: left; padding: 8px 12px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  th { color: var(--text3); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { color: var(--text2); }
+  td:first-child { color: var(--orange); font-family: monospace; font-size: 12px; }
+
+  a { color: var(--orange); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text3); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <a href="/" class="back">← Back to SetLoop</a>
+
+  <h1>Set<span>Loop</span> Privacy Policy</h1>
+  <p class="updated">Last updated: March 2026</p>
+
+  <div class="tldr">SetLoop does not collect, store, transmit, or share any user data.</div>
+
+  <h2>Microphone</h2>
+  <ul>
+    <li>Your mic activates only when you explicitly enable voice control (via Alt+V, the popup toggle, or the overlay button).</li>
+    <li>In Push-to-Talk mode, the mic is only active while you hold the designated key.</li>
+    <li>It is immediately released when you turn it off.</li>
+    <li>SetLoop does not record, store, or transmit audio.</li>
+    <li>Chrome's Web Speech API may use Google's servers for transcription — this is Chrome's built-in behavior, not ours. See <a href="https://policies.google.com/privacy">Google's Privacy Policy</a>.</li>
+  </ul>
+
+  <h2>Local Storage</h2>
+  <p>Bookmarks and mode preferences are stored on your device via <code>chrome.storage.local</code>. They never leave your machine. No browsing history, video URLs, transcripts, or personal data is collected.</p>
+
+  <h2>No Data Sharing</h2>
+  <ul>
+    <li>No analytics, tracking, or telemetry</li>
+    <li>No third-party services, SDKs, or ad networks</li>
+    <li>No remote servers or API calls</li>
+    <li>No accounts or sign-ups</li>
+  </ul>
+
+  <h2>Permissions</h2>
+  <table>
+    <tr><th>Permission</th><th>Purpose</th></tr>
+    <tr><td>activeTab</td><td>Access the current tab when you activate SetLoop</td></tr>
+    <tr><td>storage</td><td>Save bookmarks and preferences locally on your device</td></tr>
+    <tr><td>scripting</td><td>Inject the video control script on the current tab</td></tr>
+  </table>
+  <p>No host permissions are requested. SetLoop has no blanket access to your browsing data.</p>
+
+  <h2>Chrome Web Store Compliance</h2>
+  <p>The use of information received from Google APIs adheres to the <a href="https://developer.chrome.com/docs/webstore/program-policies">Chrome Web Store User Data Policy</a>, including the Limited Use requirements.</p>
+
+  <h2>Open Source</h2>
+  <p>The full source code is available for inspection. Every claim in this policy can be verified by reading the code.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about this privacy policy? Reach the developer at <a href="mailto:your-email@example.com">your-email@example.com</a>.</p>
+
+  <div class="footer">
+    SetLoop is an open-source Chrome extension. This privacy policy applies to all versions distributed via the Chrome Web Store and GitHub.
+  </div>
+
+</div>
+</body>
+</html>

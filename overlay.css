@@ -1,0 +1,95 @@
+/* SetLoop Overlay */
+#vl-root { position:fixed; top:12px; right:12px; z-index:2147483647; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; pointer-events:none; display:flex; flex-direction:column; align-items:flex-end; gap:5px; line-height:1; }
+
+/* Pill */
+.vl-pill { position:relative; display:inline-flex; align-items:center; gap:5px; padding:5px 6px 5px 10px; background:rgba(8,8,8,0.82); backdrop-filter:blur(20px) saturate(1.4); -webkit-backdrop-filter:blur(20px) saturate(1.4); border:1px solid rgba(255,255,255,0.07); border-radius:100px; pointer-events:auto; cursor:grab; transition:border-color 0.35s,box-shadow 0.35s; box-shadow:0 1px 12px rgba(0,0,0,0.35); user-select:none; overflow:hidden; }
+.vl-pill:active { cursor:grabbing; }
+.vl-pill-on { border-color:rgba(74,222,128,0.22); box-shadow:0 1px 12px rgba(0,0,0,0.35),0 0 0 1px rgba(74,222,128,0.08); }
+.vl-pill-loop { border-color:rgba(245,158,66,0.28); box-shadow:0 1px 12px rgba(0,0,0,0.35),0 0 0 1px rgba(245,158,66,0.1); }
+
+/* Progress */
+.vl-progress { position:absolute; left:0; bottom:0; height:2px; width:0; background:rgba(245,158,66,0.6); border-radius:0 1px 0 100px; transition:width 0.08s linear; pointer-events:none; }
+
+/* Dot */
+.vl-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.15); flex-shrink:0; transition:background 0.25s; }
+.vl-dot-on { background:#4ADE80; animation:vlPG 1.5s ease-in-out infinite; }
+.vl-dot-loop { background:#F59E42; animation:vlPO 1s ease-in-out infinite; }
+.vl-dot-ok { background:#4ADE80; }
+.vl-dot-err { background:#F87171; }
+@keyframes vlPG { 0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,0.35);} 50%{box-shadow:0 0 0 4px rgba(74,222,128,0);} }
+@keyframes vlPO { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,66,0.35);} 50%{box-shadow:0 0 0 4px rgba(245,158,66,0);} }
+
+/* Label */
+.vl-label { font-size:11px; font-weight:500; color:rgba(255,255,255,0.7); letter-spacing:0.01em; white-space:nowrap; max-width:260px; overflow:hidden; text-overflow:ellipsis; padding-right:2px; }
+
+/* Buttons */
+.vl-btn { display:flex; align-items:center; justify-content:center; width:24px; height:24px; border:none; border-radius:50%; background:transparent; color:rgba(255,255,255,0.4); cursor:pointer; transition:background 0.15s,color 0.15s,transform 0.1s; padding:0; flex-shrink:0; }
+.vl-btn:hover { background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.85); }
+.vl-btn:active { transform:scale(0.9); }
+.vl-btn-active { color:#4ADE80 !important; background:rgba(74,222,128,0.1); }
+.vl-btn-active:hover { background:rgba(74,222,128,0.18); }
+
+/* Quick Action Buttons */
+.vl-quick { display:flex; gap:4px; pointer-events:auto; }
+.vl-qa {
+  padding:4px 10px;
+  border:none;
+  border-radius:100px;
+  background:rgba(8,8,8,0.75);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  color:rgba(255,255,255,0.55);
+  font-family:inherit;
+  font-size:10.5px;
+  font-weight:500;
+  cursor:pointer;
+  transition:background 0.15s,color 0.15s,transform 0.1s;
+  white-space:nowrap;
+  border:1px solid rgba(255,255,255,0.06);
+}
+.vl-qa:hover { background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.9); }
+.vl-qa:active { transform:scale(0.95); }
+
+/* Toast */
+.vl-toast { padding:6px 12px; background:rgba(8,8,8,0.88); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.05); border-radius:8px; font-size:11.5px; font-weight:500; color:rgba(255,255,255,0.85); box-shadow:0 1px 10px rgba(0,0,0,0.25); opacity:0; transform:translateY(4px) scale(0.97); transition:opacity 0.2s,transform 0.2s; pointer-events:none; }
+.vl-toast.vl-toast-show { opacity:1; transform:translateY(0) scale(1); }
+
+/* HUD — positioned near pill (top right) */
+.vl-hud { position:fixed; z-index:2147483646; right:12px; pointer-events:none; opacity:0; transition:opacity 0.2s; }
+.vl-hud-show { opacity:1; }
+.vl-hud-text { display:inline-block; padding:6px 14px; background:rgba(0,0,0,0.72); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-radius:8px; font-family:inherit; font-size:12px; font-weight:500; color:rgba(255,255,255,0.85); letter-spacing:0.01em; white-space:nowrap; max-width:280px; overflow:hidden; text-overflow:ellipsis; }
+.vl-hud-cmd .vl-hud-text { color:#4ADE80; }
+.vl-hud-interim .vl-hud-text { color:rgba(255,255,255,0.5); font-style:italic; font-weight:400; }
+.vl-hud-info .vl-hud-text { color:rgba(255,255,255,0.75); }
+
+/* Edit button */
+.vl-edit-btn { pointer-events:auto; border:none; background:transparent; color:rgba(255,255,255,0.25); font-size:12px; cursor:pointer; padding:2px 6px; border-radius:4px; transition:color 0.15s,background 0.15s; }
+.vl-edit-btn:hover { color:rgba(255,255,255,0.6); background:rgba(255,255,255,0.05); }
+
+/* Edit mode inputs */
+.vl-qa-edit { display:flex; align-items:center; gap:3px; pointer-events:auto; }
+.vl-qa-input { width:40px; padding:3px 5px; border:1px solid rgba(255,255,255,0.1); border-radius:5px; background:rgba(0,0,0,0.4); color:#fff; font-family:inherit; font-size:11px; text-align:center; outline:none; -moz-appearance:textfield; }
+.vl-qa-input::-webkit-inner-spin-button,.vl-qa-input::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+.vl-qa-input:focus { border-color:rgba(245,158,66,0.4); }
+.vl-qa-at { color:rgba(255,255,255,0.25); font-size:10px; }
+.vl-qa-save { background:rgba(74,222,128,0.12) !important; color:#4ADE80 !important; border-color:rgba(74,222,128,0.2) !important; }
+
+/* Trigger mode dot */
+.vl-dot-trigger { background: #60A5FA; animation: vlPB 1s ease-in-out infinite; }
+.vl-pill-trigger { border-color: rgba(96,165,250,0.28); box-shadow: 0 1px 12px rgba(0,0,0,0.35), 0 0 0 1px rgba(96,165,250,0.1); }
+@keyframes vlPB { 0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,0.35);} 50%{box-shadow:0 0 0 4px rgba(96,165,250,0);} }
+
+/* QA row with edit button */
+.vl-qa-row { display:flex; align-items:center; gap:4px; pointer-events:auto; }
+
+/* Interim transcript on pill */
+.vl-label-interim { color: rgba(96,165,250,0.8) !important; font-style: italic; font-size: 10px !important; }
+
+/* Paused/needs-attention state — orange pulsing dot */
+.vl-dot-paused { background: #FBBF24; animation: vlPY 0.8s ease-in-out infinite; }
+.vl-pill-paused { border-color: rgba(251,191,36,0.28); box-shadow: 0 1px 12px rgba(0,0,0,0.35), 0 0 0 1px rgba(251,191,36,0.1); }
+@keyframes vlPY { 0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,0.4);} 50%{box-shadow:0 0 0 5px rgba(251,191,36,0);} }
+
+/* Mic button paused state — orange */
+.vl-btn-paused { color: #FBBF24 !important; background: rgba(251,191,36,0.1); }
+.vl-btn-paused:hover { background: rgba(251,191,36,0.18); }
