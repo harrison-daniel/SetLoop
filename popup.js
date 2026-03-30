@@ -32,10 +32,11 @@ function ui(listening, looping) {
   stxt.textContent = looping ? "Loop active" : listening ? "Listening…" : "Inactive";
 }
 
-// ═══ Instant state sync ═══
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.vl_state) {
-    const s = changes.vl_state.newValue;
+// Sync state from storage.session (or storage.local fallback)
+chrome.storage.onChanged.addListener((changes, area) => {
+  const stateChange = changes.vl_state;
+  if (stateChange) {
+    const s = stateChange.newValue;
     if (s) { ui(s.listening, s.loopActive); if (s.mode) updateModeUI(s.mode); }
   }
 });
@@ -70,7 +71,7 @@ async function setMode(mode) {
 btnAlways.addEventListener("click", () => setMode("always"));
 btnPtt.addEventListener("click", () => setMode("ptt"));
 
-// ═══ Bookmarks ═══
+// ═══ Bookmarks (DOM-based, no innerHTML for dynamic data) ═══
 async function loadBm() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
@@ -79,27 +80,53 @@ async function loadBm() {
     render(r.bookmarks || []);
   });
 }
+
 function render(list) {
-  if (!list.length) { bms.innerHTML = `<div class="bm-empty">None yet — say "bookmark" or press Alt+B</div>`; return; }
-  bms.innerHTML = list.map(b => {
-    const m = Math.floor(b.time / 60), s = Math.floor(b.time % 60).toString().padStart(2, "0");
-    return `<div class="bm-item" data-time="${b.time}" data-id="${b.id}"><span class="bm-time">${m}:${s}</span><span class="bm-label">${esc(b.label)}</span><button class="bm-del" data-del="${b.id}" title="Remove">×</button></div>`;
-  }).join("");
-  bms.querySelectorAll(".bm-item").forEach(el => {
-    el.addEventListener("click", async (e) => {
+  bms.textContent = "";
+
+  if (!list.length) {
+    const empty = document.createElement("div");
+    empty.className = "bm-empty";
+    empty.textContent = 'None yet — say "bookmark" or press Alt+B';
+    bms.appendChild(empty);
+    return;
+  }
+
+  for (const b of list) {
+    const m = Math.floor(b.time / 60);
+    const s = Math.floor(b.time % 60).toString().padStart(2, "0");
+
+    const item = document.createElement("div");
+    item.className = "bm-item";
+
+    const timeEl = document.createElement("span");
+    timeEl.className = "bm-time";
+    timeEl.textContent = `${m}:${s}`;
+
+    const labelEl = document.createElement("span");
+    labelEl.className = "bm-label";
+    labelEl.textContent = typeof b.label === "string" ? b.label : `${m}:${s}`;
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "bm-del";
+    delBtn.title = "Remove";
+    delBtn.textContent = "×";
+
+    item.append(timeEl, labelEl, delBtn);
+    bms.appendChild(item);
+
+    item.addEventListener("click", async (e) => {
       if (e.target.closest(".bm-del")) return;
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: "go-to-bookmark", time: +el.dataset.time });
+      if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: "go-to-bookmark", time: b.time });
     });
-  });
-  bms.querySelectorAll(".bm-del").forEach(btn => {
-    btn.addEventListener("click", async (e) => {
+
+    delBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: "delete-bookmark", id: +btn.dataset.del }, () => loadBm());
+      if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: "delete-bookmark", id: b.id }, () => loadBm());
     });
-  });
+  }
 }
-function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
 init();

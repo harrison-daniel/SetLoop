@@ -1,12 +1,17 @@
 {
   "name": "setloop",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "private": true,
   "description": "Voice-controlled video looping for Chrome. Practice any section of any tutorial hands-free.",
-  "main": "background.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node build.js",
+    "download-models": "node scripts/download-models.js",
+    "setup": "npm install && node scripts/download-models.js && node build.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "dependencies": {
+    "onnxruntime-web": "^1.24.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.4"
+  }
 }

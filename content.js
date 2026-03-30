@@ -3,30 +3,74 @@
   if (window.__vl) return;
   window.__vl = true;
 
-  const LOOP_POLL_MS = 50, TOAST_MS = 2200, MIN_CONFIDENCE = 0.45, RAMP_STEP = 0.05;
+  const LOOP_POLL_MS = 50, TOAST_MS = 2200, RAMP_STEP = 0.05;
+
+  const DEFAULT_QUICK_ACTIONS = [
+    { label: "⟳20s 75%", secs: 20, spd: 0.75 },
+    { label: "⟳30s 50%", secs: 30, spd: 0.50 },
+    { label: "■ Stop", secs: 0, spd: 0 },
+  ];
 
   const state = {
-    listening: false, recognition: null,
+    listening: false,
     mode: "always", pttKey: "Backquote", pttHeld: false,
     loop: { active: false, start: 0, end: 0, interval: null, preRate: 1, count: 0, ramp: false },
     bookmarks: [], videoId: getVid(),
-    quickActions: [
-      { label: "⟳20s 75%", secs: 20, spd: 0.75 },
-      { label: "⟳30s 50%", secs: 30, spd: 0.50 },
-      { label: "■ Stop", secs: 0, spd: 0 },
-    ],
+    quickActions: DEFAULT_QUICK_ACTIONS.slice(),
     editing: false,
+    speechStartTime: null,
+    vadReady: false,
   };
 
   // ═══ Config ═══
   chrome?.storage?.local?.get("vl_cfg", (d) => {
-    const c = d?.vl_cfg; if (!c) return;
-    if (c.mode) state.mode = c.mode;
-    if (c.pttKey) state.pttKey = c.pttKey;
-    if (c.quickActions) state.quickActions = c.quickActions;
+    const c = validateCfg(d?.vl_cfg);
+    if (!c) return;
+    state.mode = c.mode;
+    state.pttKey = c.pttKey;
+    state.quickActions = c.quickActions;
   });
-  function saveCfg() { try { chrome?.storage?.local?.set({ vl_cfg: { mode: state.mode, pttKey: state.pttKey, quickActions: state.quickActions } }); } catch {} }
-  function syncState() { try { chrome?.storage?.local?.set({ vl_state: { listening: state.listening, loopActive: state.loop.active, mode: state.mode } }); } catch {} }
+
+  function validateCfg(c) {
+    if (!c || typeof c !== "object") return null;
+    return {
+      mode: ["always", "ptt"].includes(c.mode) ? c.mode : "always",
+      pttKey: typeof c.pttKey === "string" && c.pttKey.length < 30 ? c.pttKey : "Backquote",
+      quickActions: Array.isArray(c.quickActions)
+        ? c.quickActions.filter(q =>
+            q && typeof q.secs === "number" && q.secs >= 0 && q.secs <= 300 &&
+            typeof q.spd === "number" && q.spd >= 0 && q.spd <= 4 &&
+            typeof q.label === "string" && q.label.length < 50
+          ).slice(0, 10)
+        : DEFAULT_QUICK_ACTIONS.slice(),
+    };
+  }
+
+  function saveCfg() {
+    try {
+      chrome?.storage?.local?.set({
+        vl_cfg: { mode: state.mode, pttKey: state.pttKey, quickActions: state.quickActions },
+      });
+    } catch {}
+  }
+
+  function syncState() {
+    try {
+      chrome?.storage?.session?.set({
+        vl_state: { listening: state.listening, loopActive: state.loop.active, mode: state.mode },
+      });
+    } catch {
+      // Fallback for older Chrome without storage.session
+      chrome?.storage?.local?.set({
+        vl_state: { listening: state.listening, loopActive: state.loop.active, mode: state.mode },
+      });
+    }
+    chrome.runtime.sendMessage({
+      type: "state-update",
+      listening: state.listening,
+      loopActive: state.loop.active,
+    });
+  }
 
   // ═══ Helpers ═══
   function $(s) { return document.querySelector(s); }
@@ -44,9 +88,18 @@
   }
 
   // ═══ Bookmarks ═══
-  function loadBm() { chrome?.storage?.local?.get(`vl_bm_${state.videoId}`, (d) => { state.bookmarks = d?.[`vl_bm_${state.videoId}`] || []; }); }
+  function loadBm() { chrome?.storage?.local?.get(`vl_bm_${state.videoId}`, (d) => { state.bookmarks = validateBookmarks(d?.[`vl_bm_${state.videoId}`]); }); }
   function saveBm() { chrome?.storage?.local?.set({ [`vl_bm_${state.videoId}`]: state.bookmarks }); }
   function addBm() { const v = getVideo(); if (!v) return; const t = v.currentTime; state.bookmarks.push({ id: Date.now(), time: t, label: fmt(t), speed: v.playbackRate, created: new Date().toISOString() }); saveBm(); beep(); toast(`Bookmarked ${fmt(t)}`); showHud(`Bookmarked ${fmt(t)}`, "info"); }
+
+  function validateBookmarks(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(b =>
+      b && typeof b.id === "number" &&
+      typeof b.time === "number" && b.time >= 0 &&
+      typeof b.label === "string" && b.label.length < 100
+    ).slice(0, 200);
+  }
 
   // ═══ Overlay ═══
   let overlay = null, toastTmr = null;
@@ -73,15 +126,63 @@
     renderQA(); drag($("#vlPill"));
   }
 
-  // ═══ Quick Actions ═══
+  // ═══ Quick Actions (DOM-based, no innerHTML for dynamic data) ═══
   function renderQA() {
     const el = $("#vlQuick"); if (!el) return;
+    el.textContent = "";
+
     if (state.editing) {
-      el.innerHTML = state.quickActions.filter(q => q.secs > 0).map((q, i) => `<div class="vl-qa-edit"><input type="number" class="vl-qa-input" value="${q.secs}" min="1" max="300" data-f="secs" data-i="${i}"><span class="vl-qa-at">s</span><input type="number" class="vl-qa-input" value="${Math.round(q.spd * 100)}" min="10" max="200" data-f="spd" data-i="${i}"><span class="vl-qa-at">%</span></div>`).join("") + `<button class="vl-qa vl-qa-save" id="vlSave">✓</button>`;
-      document.getElementById("vlSave")?.addEventListener("click", (e) => { e.stopPropagation(); el.querySelectorAll(".vl-qa-input").forEach(inp => { const i = +inp.dataset.i, f = inp.dataset.f, qa = state.quickActions.filter(q => q.secs > 0)[i]; if (!qa) return; if (f === "secs") qa.secs = clamp(+inp.value, 1, 300); if (f === "spd") qa.spd = clamp(+inp.value / 100, 0.1, 4); qa.label = `⟳${qa.secs}s ${Math.round(qa.spd * 100)}%`; }); saveCfg(); state.editing = false; renderQA(); });
+      const editable = state.quickActions.filter(q => q.secs > 0);
+      editable.forEach((q, i) => {
+        const wrap = document.createElement("div");
+        wrap.className = "vl-qa-edit";
+
+        const secInput = document.createElement("input");
+        secInput.type = "number"; secInput.className = "vl-qa-input";
+        secInput.value = q.secs; secInput.min = 1; secInput.max = 300;
+        secInput.dataset.f = "secs"; secInput.dataset.i = i;
+
+        const secLabel = document.createElement("span");
+        secLabel.className = "vl-qa-at"; secLabel.textContent = "s";
+
+        const spdInput = document.createElement("input");
+        spdInput.type = "number"; spdInput.className = "vl-qa-input";
+        spdInput.value = Math.round(q.spd * 100); spdInput.min = 10; spdInput.max = 200;
+        spdInput.dataset.f = "spd"; spdInput.dataset.i = i;
+
+        const spdLabel = document.createElement("span");
+        spdLabel.className = "vl-qa-at"; spdLabel.textContent = "%";
+
+        wrap.append(secInput, secLabel, spdInput, spdLabel);
+        el.appendChild(wrap);
+      });
+
+      const saveBtn = document.createElement("button");
+      saveBtn.className = "vl-qa vl-qa-save"; saveBtn.textContent = "✓";
+      saveBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        el.querySelectorAll(".vl-qa-input").forEach(inp => {
+          const idx = +inp.dataset.i, f = inp.dataset.f;
+          const qa = state.quickActions.filter(q => q.secs > 0)[idx];
+          if (!qa) return;
+          if (f === "secs") qa.secs = clamp(+inp.value, 1, 300);
+          if (f === "spd") qa.spd = clamp(+inp.value / 100, 0.1, 4);
+          qa.label = `⟳${qa.secs}s ${Math.round(qa.spd * 100)}%`;
+        });
+        saveCfg(); state.editing = false; renderQA();
+      });
+      el.appendChild(saveBtn);
     } else {
-      el.innerHTML = state.quickActions.map((q, i) => `<button class="vl-qa" data-i="${i}">${q.label}</button>`).join("");
-      el.querySelectorAll(".vl-qa").forEach(b => b.addEventListener("click", (e) => { e.stopPropagation(); const q = state.quickActions[+b.dataset.i]; if (!q) return; if (q.secs === 0 && q.spd === 0) exec({ a: "stop" }); else exec({ a: "loop_last", secs: q.secs, spd: q.spd }); }));
+      state.quickActions.forEach((q, i) => {
+        const btn = document.createElement("button");
+        btn.className = "vl-qa"; btn.textContent = q.label;
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (q.secs === 0 && q.spd === 0) exec({ a: "stop" });
+          else exec({ a: "loop_last", secs: q.secs, spd: q.spd });
+        });
+        el.appendChild(btn);
+      });
     }
   }
   function toggleEdit() { state.editing = !state.editing; const b = $("#vlEdit"); if (b) b.textContent = state.editing ? "✕" : "⚙"; renderQA(); }
@@ -92,7 +193,6 @@
     const qaRow = document.querySelector(".vl-qa-row");
     const pill = document.getElementById("vlPill");
     if (!h) return;
-    // Position below quick action buttons, or below pill if no QA visible
     const anchor = qaRow || pill;
     if (!anchor) return;
     const r = anchor.getBoundingClientRect();
@@ -116,7 +216,6 @@
     if (mode === "loop" || mode === "paused" || !lbl.classList.contains("vl-label-interim")) { lbl.textContent = text; lbl.classList.remove("vl-label-interim"); }
     $("#vlDot").className = "vl-dot" + ({ listening: " vl-dot-on", loop: " vl-dot-loop", success: " vl-dot-ok", error: " vl-dot-err", paused: " vl-dot-paused" }[mode] || "");
     $("#vlPill").className = "vl-pill" + ({ listening: " vl-pill-on", loop: " vl-pill-loop", paused: " vl-pill-paused" }[mode] || "");
-    // Mic icon: green when active, orange when paused, default when off
     const mic = $("#vlMic");
     mic.classList.remove("vl-btn-active", "vl-btn-paused");
     if (mode === "paused") mic.classList.add("vl-btn-paused");
@@ -131,36 +230,48 @@
   function num(t) { const s = t.toLowerCase().trim(), n = parseFloat(s); if (!isNaN(n)) return n; const p = s.match(/^(.+?)\s+point\s+(.+)$/); if (p) { const a = num(p[1]), b = num(p[2]); if (!isNaN(a) && !isNaN(b)) return a + b / 10 ** Math.ceil(Math.log10(b + 1)); } if (W[s] !== undefined) return W[s]; let c = 0; for (const x of s.split(/[\s-]+/)) { const v = W[x]; if (v === undefined) continue; if (v === 100) c = (c || 1) * 100; else c += v; } return c || NaN; }
   function parseTime(s) { s = s.trim(); const c = s.match(/^(\d+):(\d+)$/); if (c) return +c[1] * 60 + +c[2]; const m = s.match(/(\w+)\s+minutes?\s*(?:and\s+)?(\w+)?\s*(?:seconds?)?/i); if (m) { const v = num(m[1]); return isNaN(v) ? NaN : v * 60 + (m[2] ? (num(m[2]) || 0) : 0); } const o = s.match(/(\w+)\s+minutes?/i); if (o) { const v = num(o[1]); return isNaN(v) ? NaN : v * 60; } const z = s.match(/(\w+)\s*(?:seconds?|secs?)?$/i); if (z) { const v = num(z[1]); return isNaN(v) ? NaN : v; } return NaN; }
 
-  // ═══ Parser — scans for commands within longer transcripts ═══
+  // ═══ Parser ═══
   function parse(raw) {
     let c = raw.toLowerCase().trim().replace(/[.!,?]+/g, "");
     c = c.replace(/loop\s+lasts?\s+/g, "loop last ");
     c = c.replace(/\s+i\s+think\s+/g, " at ");
+
     // SUBSTRING: "loop last N at X" anywhere in transcript
     let m = c.match(/loop\s+last\s+(\w+)\s*(?:(?:at|and)\s+(\w+)\s*(?:percent|%)?\s*(?:speed)?)?\s*(ramp(?:\s+up)?)?/);
     if (m) { const s = parseTime(m[1]); if (!isNaN(s) && s > 0 && s < 600) { let spd = null; if (m[2]) { let v = num(m[2]); if (!isNaN(v)) { spd = v > 4 ? v / 100 : v; spd = clamp(spd, 0.1, 4); } } return { a: "loop_last", secs: s, spd, ramp: !!m[3] }; } }
+
     // Loop range — substring
     m = c.match(/loop\s+(?:from\s+)?(\d+(?::\d+)?)\s+to\s+(\d+(?::\d+)?)(?:\s+(?:at|and)\s+(\w+)\s*(?:percent|%)?)?/);
     if (m) { const s = parseTime(m[1]), e = parseTime(m[2]); if (!isNaN(s) && !isNaN(e)) { let spd = null; if (m[3]) { let v = num(m[3]); if (!isNaN(v)) { spd = v > 4 ? v / 100 : v; spd = clamp(spd, 0.1, 4); } } return { a: "loop_range", start: s, end: e, spd }; } }
-    // SHORT COMMANDS — exact match only (≤4 words to avoid false triggers)
+
+    // SHORT COMMANDS — require "loop" prefix in Always On mode
+    const hasPrefix = /(?:^|\s)loop\s+/.test(c);
     const stripped = c.replace(/^(?:.*\s)?loop\s+/, "").trim();
-    if (c.split(/\s+/).length <= 4) {
-      if (/^(?:mic\s+off|stop\s+listening|turn\s+off)$/.test(c) || /^(?:mic\s+off|stop\s+listening|turn\s+off)$/.test(stripped)) return { a: "mic_off" };
-      if (/^(?:stop|cancel|end\s+loop|quit)(?:\s+loop(?:ing)?)?$/.test(stripped) || /^(?:stop|cancel|end\s+loop|quit)(?:\s+loop(?:ing)?)?$/.test(c)) return { a: "stop" };
-      if (/^wider$/.test(stripped) || /^wider$/.test(c)) return { a: "adjust", startDelta: -2, endDelta: 0 };
-      if (/^tighter$/.test(stripped) || /^tighter$/.test(c)) return { a: "adjust", startDelta: 2, endDelta: 0 };
-      if (/^shift\s+back$/.test(stripped)) return { a: "adjust", startDelta: -2, endDelta: -2 };
-      if (/^shift\s+forward$/.test(stripped)) return { a: "adjust", startDelta: 2, endDelta: 2 };
-      m = stripped.match(/^(?:set\s+)?speed\s+(?:to\s+)?(\w+)(?:\s*(?:percent|%))?$/); if (m) { let r = num(m[1]); if (isNaN(r)) return null; if (r > 4) r /= 100; return { a: "speed", rate: clamp(r, 0.1, 4) }; }
-      if (/^(?:normal\s+speed|reset(?:\s+speed)?)$/.test(stripped)) return { a: "speed", rate: 1 };
-      if (/^(?:slow(?:er)?|slow\s*down)$/.test(stripped) || /^(?:slow(?:er)?|slow\s*down)$/.test(c)) return { a: "nudge", d: -0.25 };
-      if (/^(?:fast(?:er)?|speed\s*up)$/.test(stripped) || /^(?:fast(?:er)?|speed\s*up)$/.test(c)) return { a: "nudge", d: 0.25 };
-      m = stripped.match(/^back\s+(\w+)$/); if (m) { const s = parseTime(m[1]); if (!isNaN(s)) return { a: "seek", d: -s }; }
-      m = stripped.match(/^(?:forward|skip)\s+(\w+)$/); if (m) { const s = parseTime(m[1]); if (!isNaN(s)) return { a: "seek", d: s }; }
-      if (/^pause$/.test(stripped) || /^pause$/.test(c)) return { a: "pause" };
-      if (/^(?:play|resume)$/.test(stripped) || /^(?:play|resume)$/.test(c)) return { a: "play" };
-      if (/^(?:bookmark|mark|save)(?:\s+(?:this|here))?$/.test(stripped) || /^(?:bookmark|mark|save)(?:\s+(?:this|here))?$/.test(c)) return { a: "bookmark" };
-      if (/^(?:copy|share)\s*(?:link|url)?$/.test(stripped) || /^(?:copy|share)\s*(?:link|url)?$/.test(c)) return { a: "copy" };
+
+    // In Always On mode, short commands MUST have "loop" prefix to prevent
+    // video audio from triggering commands (e.g., instructor saying "stop")
+    if (c.split(/\s+/).length <= 5) {
+      const cmds = state.mode === "always" ? stripped : (stripped || c);
+      const raw_c = c;
+
+      if (state.mode === "ptt" || hasPrefix) {
+        if (/^(?:mic\s+off|stop\s+listening|turn\s+off)$/.test(cmds)) return { a: "mic_off" };
+        if (/^(?:stop|cancel|end\s+loop|quit)(?:\s+loop(?:ing)?)?$/.test(cmds)) return { a: "stop" };
+        if (/^wider$/.test(cmds)) return { a: "adjust", startDelta: -2, endDelta: 0 };
+        if (/^tighter$/.test(cmds)) return { a: "adjust", startDelta: 2, endDelta: 0 };
+        if (/^shift\s+back$/.test(cmds)) return { a: "adjust", startDelta: -2, endDelta: -2 };
+        if (/^shift\s+forward$/.test(cmds)) return { a: "adjust", startDelta: 2, endDelta: 2 };
+        m = cmds.match(/^(?:set\s+)?speed\s+(?:to\s+)?(\w+)(?:\s*(?:percent|%))?$/); if (m) { let r = num(m[1]); if (isNaN(r)) return null; if (r > 4) r /= 100; return { a: "speed", rate: clamp(r, 0.1, 4) }; }
+        if (/^(?:normal\s+speed|reset(?:\s+speed)?)$/.test(cmds)) return { a: "speed", rate: 1 };
+        if (/^(?:slow(?:er)?|slow\s*down)$/.test(cmds)) return { a: "nudge", d: -0.25 };
+        if (/^(?:fast(?:er)?|speed\s*up)$/.test(cmds)) return { a: "nudge", d: 0.25 };
+        m = cmds.match(/^back\s+(\w+)$/); if (m) { const s = parseTime(m[1]); if (!isNaN(s)) return { a: "seek", d: -s }; }
+        m = cmds.match(/^(?:forward|skip)\s+(\w+)$/); if (m) { const s = parseTime(m[1]); if (!isNaN(s)) return { a: "seek", d: s }; }
+        if (/^pause$/.test(cmds)) return { a: "pause" };
+        if (/^(?:play|resume)$/.test(cmds)) return { a: "play" };
+        if (/^(?:bookmark|mark|save)(?:\s+(?:this|here))?$/.test(cmds)) return { a: "bookmark" };
+        if (/^(?:copy|share)\s*(?:link|url)?$/.test(cmds)) return { a: "copy" };
+      }
     }
     return null;
   }
@@ -170,8 +281,12 @@
     if (cmd.a === "mic_off") { stopListening(); beep(); toast("Mic OFF"); showHud("Mic OFF", "info"); return; }
     const v = getVideo(); if (!v) { toast("No video found"); return; }
     beep();
+
+    // Use speechStartTime for accurate loop boundaries when available
+    const refTime = state.speechStartTime != null ? state.speechStartTime : v.currentTime;
+
     switch (cmd.a) {
-      case "loop_last": { stopLoop(v, false); state.loop.start = Math.max(0, v.currentTime - cmd.secs); state.loop.end = v.currentTime; state.loop.ramp = !!cmd.ramp; startLoop(v, cmd.spd); const l = cmd.spd ? `Loop ${cmd.secs}s @ ${Math.round(cmd.spd * 100)}%${cmd.ramp ? " ↑" : ""}` : `Loop last ${cmd.secs}s`; toast(l); setStatus(l, "loop"); showHud(l, "cmd"); break; }
+      case "loop_last": { stopLoop(v, false); state.loop.start = Math.max(0, refTime - cmd.secs); state.loop.end = refTime; state.loop.ramp = !!cmd.ramp; startLoop(v, cmd.spd); const l = cmd.spd ? `Loop ${cmd.secs}s @ ${Math.round(cmd.spd * 100)}%${cmd.ramp ? " ↑" : ""}` : `Loop last ${cmd.secs}s`; toast(l); setStatus(l, "loop"); showHud(l, "cmd"); break; }
       case "loop_range": { stopLoop(v, false); state.loop.start = cmd.start; state.loop.end = cmd.end; state.loop.ramp = false; startLoop(v, cmd.spd); const l = `Loop ${fmt(cmd.start)}–${fmt(cmd.end)}`; toast(l); setStatus(l, "loop"); showHud(l, "cmd"); break; }
       case "adjust": { if (!state.loop.active) { toast("No active loop"); return; } state.loop.start = Math.max(0, state.loop.start + cmd.startDelta); state.loop.end = Math.max(state.loop.start + 1, state.loop.end + cmd.endDelta); v.currentTime = state.loop.start; const l = loopLabel(); toast(l); setStatus(l, "loop"); showHud(l, "cmd"); break; }
       case "stop": { const w = state.loop.active; stopLoop(v, true); toast(w ? "Stopped" : "No loop"); setStatus("Listening", state.listening ? "listening" : "idle"); if (w) showHud("Stopped", "info"); break; }
@@ -183,6 +298,7 @@
       case "bookmark": addBm(); break;
       case "copy": copyText(tsUrl(v.currentTime)); toast("Link copied"); showHud("Link copied", "info"); break;
     }
+    state.speechStartTime = null;
   }
 
   // ═══ Loop Engine ═══
@@ -210,114 +326,114 @@
   }
   function stopLoop(v, restore) { state.loop.active = false; state.loop.ramp = false; clearInterval(state.loop.interval); state.loop.interval = null; if (restore && v) v.playbackRate = state.loop.preRate; state.loop.preRate = 1; state.loop.count = 0; updateProgress(); syncState(); }
 
-  // ═══ Speech Recognition — non-continuous, fast restart ═══
-  let errN = 0;
-
+  // ═══ Voice Control — Local Pipeline via Offscreen Document ═══
   function startListening() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { toast("Not supported"); return; }
-    state.listening = true; errN = 0;
-    setStatus("Listening", "listening");
-    if (state.mode === "always") launchSR();
+    state.listening = true;
+    setStatus(state.vadReady ? "Listening" : "Loading models…", state.vadReady ? "listening" : "paused");
+    chrome.runtime.sendMessage({ type: "start-voice" }, (r) => {
+      if (chrome.runtime.lastError || !r?.ok) {
+        setStatus("Voice unavailable", "error");
+        toast("Could not start voice");
+        state.listening = false;
+      }
+    });
     syncState();
   }
+
   function stopListening() {
     state.listening = false;
-    if (state.recognition) { try { state.recognition.abort(); } catch {} }
-    state.recognition = null; setStatus("SetLoop", "idle");
-  }
-
-  let startFailCount = 0; // Track consecutive launches where onstart never fires
-
-  function launchSR() {
-    if (state.recognition) { try { state.recognition.abort(); } catch {} }
-    state.recognition = null; if (!state.listening) return;
-
-    // If we've failed to start 3+ times, Chrome is blocking us — stop retrying
-    if (startFailCount >= 3) {
-      setStatus("Paused · toggle 🎙 off/on", "paused");
-      console.log("[VL] SR blocked — click mic icon to resume");
-      return;
-    }
-
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition, r = new SR();
-    r.continuous = false; r.interimResults = true; r.lang = "en-US"; r.maxAlternatives = 1;
-    state.recognition = r;
-    let started = false;
-
-    r.onstart = () => {
-      errN = 0; started = true; startFailCount = 0;
-    };
-    r.onresult = (e) => {
-      errN = 0;
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const res = e.results[i], t = res[0].transcript.trim(), conf = res[0].confidence;
-        if (!t) continue;
-        if (!res.isFinal) { if (t.length < 50) showInterimOnPill(t); if (state.mode === "ptt") showHud(t, "interim"); continue; }
-        if (conf > 0 && conf < MIN_CONFIDENCE) { console.log(`[VL] skip (${(conf * 100).toFixed(0)}%): "${t}"`); continue; }
-        console.log(`[VL] heard (${conf > 0 ? (conf * 100).toFixed(0) + "%" : "–"}): "${t}"`);
-        const cmd = parse(t); if (cmd) { console.log("[VL] cmd:", cmd); exec(cmd); }
-      }
-    };
-    r.onerror = (e) => { if (e.error === "not-allowed" || e.error === "service-not-allowed") { setStatus("Mic blocked", "error"); toast("Mic blocked"); state.listening = false; state.recognition = null; syncState(); return; } errN++; };
-    r.onend = () => {
-      if (!state.listening) return;
-      if (state.mode === "ptt" && !state.pttHeld) return;
-      // If onstart never fired, count it as a failure
-      if (!started) startFailCount++;
-      const d = errN > 3 ? Math.min(300 * Math.pow(1.5, errN), 3000) : 150;
-      setTimeout(launchSR, d); // launchSR will check startFailCount and bail if needed
-    };
-
-    try { r.start(); } catch { if (state.listening) setTimeout(launchSR, 1000); }
+    chrome.runtime.sendMessage({ type: "stop-voice" });
+    setStatus("SetLoop", "idle");
+    syncState();
   }
 
   // ═══ Push-to-Talk ═══
-  document.addEventListener("keydown", (e) => { if (state.mode !== "ptt" || !state.listening || state.pttHeld) return; if (e.code !== state.pttKey) return; if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) return; e.preventDefault(); state.pttHeld = true; setStatus("Speak now…", "listening"); showHud("Listening…", "interim"); launchSR(); });
-  document.addEventListener("keyup", (e) => { if (state.mode !== "ptt" || !state.pttHeld || e.code !== state.pttKey) return; e.preventDefault(); state.pttHeld = false; setTimeout(() => { if (!state.pttHeld && state.recognition) try { state.recognition.stop(); } catch {} }, 600); setStatus("Hold ` to speak", state.loop.active ? "loop" : "idle"); });
-
-  // ═══ Focus recovery — only mic icon click works ═══
-  document.addEventListener("visibilitychange", () => {
-    if (!state.listening || state.mode !== "always") return;
-    if (document.hidden) {
-      // Tab going hidden — show paused state immediately
-      setStatus("Paused · toggle 🎙 off/on", "paused");
-    }
-    // Tab visible — try auto-restart (works if user clicked the tab itself)
-    if (!document.hidden) {
-      startFailCount = 0;
-      if (state.recognition) { try { state.recognition.abort(); } catch {} }
-      state.recognition = null; errN = 0;
-      launchSR();
-    }
-  });
+  document.addEventListener("keydown", (e) => { if (state.mode !== "ptt" || !state.listening || state.pttHeld) return; if (e.code !== state.pttKey) return; if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) return; e.preventDefault(); state.pttHeld = true; setStatus("Speak now…", "listening"); showHud("Listening…", "interim"); chrome.runtime.sendMessage({ type: "start-voice" }); });
+  document.addEventListener("keyup", (e) => { if (state.mode !== "ptt" || !state.pttHeld || e.code !== state.pttKey) return; e.preventDefault(); state.pttHeld = false; setTimeout(() => { if (!state.pttHeld) chrome.runtime.sendMessage({ type: "stop-voice" }); }, 600); setStatus("Hold ` to speak", state.loop.active ? "loop" : "idle"); });
 
   // ═══ Toggle ═══
   function toggle() {
     createOverlay();
-    startFailCount = 0;
     if (state.listening) { stopListening(); toast("Voice OFF"); }
-    else { startListening(); toast(`Voice ON · ${state.mode === "ptt" ? "Hold ` to speak" : "Listening"}`); }
+    else { startListening(); toast(`Voice ON · ${state.mode === "ptt" ? "Hold \` to speak" : "Listening"}`); }
   }
 
-  // ═══ Messages ═══
-  chrome.runtime.onMessage.addListener((msg, _, respond) => {
+  // ═══ Message Handler (validated) ═══
+  const VALID_TYPES = new Set([
+    "ping", "toggle", "status", "set-mode", "quick-bookmark",
+    "get-bookmarks", "go-to-bookmark", "delete-bookmark",
+    "vad-status", "vad-speech-start", "vad-transcript",
+  ]);
+
+  chrome.runtime.onMessage.addListener((msg, sender, respond) => {
+    if (sender.id !== chrome.runtime.id) return;
+    if (!msg || typeof msg.type !== "string" || !VALID_TYPES.has(msg.type)) return;
+
     switch (msg.type) {
       case "ping": respond({ pong: true }); break;
       case "toggle": toggle(); respond({ listening: state.listening, loopActive: state.loop.active, mode: state.mode }); break;
-      case "status": {
-        if (state.listening && state.mode === "always" && !state.recognition) launchSR();
-        respond({ listening: state.listening, loopActive: state.loop.active, mode: state.mode }); break;
-      }
+      case "status": respond({ listening: state.listening, loopActive: state.loop.active, mode: state.mode }); break;
       case "set-mode": {
+        if (!["always", "ptt"].includes(msg.value)) break;
         state.mode = msg.value; saveCfg();
-        if (state.listening) { if (state.recognition) { try { state.recognition.abort(); } catch {} } state.recognition = null; if (state.mode === "always") launchSR(); setStatus(state.mode === "ptt" ? "Hold ` to speak" : "Listening", state.mode === "always" ? "listening" : "idle"); }
-        toast(`Mode: ${state.mode === "ptt" ? "Push-to-Talk" : "Always On"}`); respond({ ok: true, mode: state.mode }); break;
+        if (state.listening) {
+          if (state.mode === "always") {
+            chrome.runtime.sendMessage({ type: "start-voice" });
+            setStatus("Listening", "listening");
+          } else {
+            chrome.runtime.sendMessage({ type: "stop-voice" });
+            setStatus("Hold ` to speak", "idle");
+          }
+        }
+        toast(`Mode: ${state.mode === "ptt" ? "Push-to-Talk" : "Always On"}`);
+        respond({ ok: true, mode: state.mode });
+        break;
       }
       case "quick-bookmark": createOverlay(); addBm(); respond({ ok: true }); break;
       case "get-bookmarks": respond({ bookmarks: state.bookmarks, videoId: state.videoId }); break;
-      case "go-to-bookmark": { const v = getVideo(); if (v && typeof msg.time === "number") { v.currentTime = msg.time; toast(`→ ${fmt(msg.time)}`); } respond({ ok: true }); break; }
-      case "delete-bookmark": state.bookmarks = state.bookmarks.filter(b => b.id !== msg.id); saveBm(); respond({ ok: true }); break;
+      case "go-to-bookmark": {
+        if (typeof msg.time !== "number") break;
+        const v = getVideo();
+        if (v) { v.currentTime = msg.time; toast(`→ ${fmt(msg.time)}`); }
+        respond({ ok: true }); break;
+      }
+      case "delete-bookmark": {
+        if (typeof msg.id !== "number") break;
+        state.bookmarks = state.bookmarks.filter(b => b.id !== msg.id);
+        saveBm(); respond({ ok: true }); break;
+      }
+
+      // ── VAD events from offscreen (via background) ──
+      case "vad-status": {
+        if (msg.status === "ready") {
+          state.vadReady = true;
+          if (state.listening) setStatus("Listening", "listening");
+        } else if (msg.status === "loading") {
+          if (state.listening) setStatus("Loading models…", "paused");
+        } else if (msg.status === "error") {
+          state.vadReady = false;
+          setStatus("Voice error", "error");
+          toast(msg.message || "Model load failed");
+        }
+        break;
+      }
+      case "vad-speech-start": {
+        const v = getVideo();
+        state.speechStartTime = v ? v.currentTime : null;
+        showInterimOnPill("Listening…");
+        break;
+      }
+      case "vad-transcript": {
+        if (typeof msg.text !== "string") break;
+        const text = msg.text.trim();
+        if (!text) break;
+        console.log(`[SetLoop] heard: "${text}"`);
+        showInterimOnPill(text);
+        const cmd = parse(text);
+        if (cmd) { console.log("[SetLoop] cmd:", cmd); exec(cmd); }
+        else { state.speechStartTime = null; }
+        break;
+      }
     }
   });
 

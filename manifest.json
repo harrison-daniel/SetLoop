@@ -1,12 +1,14 @@
 {
   "manifest_version": 3,
   "name": "SetLoop",
-  "version": "1.0.0",
-  "description": "Voice-controlled video looping. Say 'loop last 30 at half speed' to drill any section hands-free. Zero data collection — mic only active when you enable it.",
+  "version": "2.0.0",
+  "minimum_chrome_version": "116",
+  "description": "Voice-controlled video looping. Say 'loop last 30 at half speed' to drill any section hands-free. Fully local — mic audio never leaves your device.",
   "permissions": [
     "activeTab",
     "storage",
-    "scripting"
+    "scripting",
+    "offscreen"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -35,6 +37,6 @@
     "128": "icons/icon128.png"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   }
 }
