@@ -93,3 +93,15 @@
 /* Mic button paused state — orange */
 .vl-btn-paused { color: #FBBF24 !important; background: rgba(251,191,36,0.1); }
 .vl-btn-paused:hover { background: rgba(251,191,36,0.18); }
+
+/* Hearing speech — bright green rapid pulse */
+.vl-dot-hearing { background:#4ADE80 !important; animation:vlHear 0.4s ease-in-out infinite !important; }
+@keyframes vlHear { 0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,0.5);transform:scale(1);} 50%{box-shadow:0 0 0 6px rgba(74,222,128,0);transform:scale(1.3);} }
+
+/* Processing transcription — blue slow pulse */
+.vl-dot-processing { background:#60A5FA !important; animation:vlProc 0.8s ease-in-out infinite !important; }
+@keyframes vlProc { 0%,100%{box-shadow:0 0 0 0 rgba(96,165,250,0.4);} 50%{box-shadow:0 0 0 5px rgba(96,165,250,0);} }
+
+/* Missed command — brief red flash, user knows to repeat */
+.vl-dot-miss { background:#F87171 !important; animation:vlMiss 0.4s ease-out 1 !important; }
+@keyframes vlMiss { 0%{box-shadow:0 0 0 0 rgba(248,113,113,0.6);transform:scale(1.4);} 100%{box-shadow:0 0 0 6px rgba(248,113,113,0);transform:scale(1);} }
