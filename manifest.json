@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "SetLoop",
-  "version": "2.0.0",
-  "minimum_chrome_version": "116",
-  "description": "Voice-controlled video looping. Say 'loop last 30 at half speed' to drill any section hands-free. Fully local — mic audio never leaves your device.",
+  "short_name": "SetLoop",
+  "version": "3.0.0",
+  "minimum_chrome_version": "120",
+  "description": "Voice-controlled video looping. Say 'loop last 30 at 50' to practice any section hands-free.",
+  "homepage_url": "https://github.com/harrison-daniel/SetLoop",
   "permissions": [
     "activeTab",
     "storage",
-    "scripting",
-    "offscreen"
+    "scripting"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -37,6 +38,6 @@
     "128": "icons/icon128.png"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
 }

@@ -68,17 +68,30 @@
   <a href="/" class="back">← Back to SetLoop</a>
 
   <h1>Set<span>Loop</span> Privacy Policy</h1>
-  <p class="updated">Last updated: March 2026</p>
+  <p class="updated">Last updated: April 2026</p>
 
-  <div class="tldr">SetLoop does not collect, store, transmit, or share any user data.</div>
+  <div class="tldr">SetLoop does not create accounts, run analytics, or operate any servers. Voice commands are transcribed by Chrome's built-in speech service while the mic is active.</div>
 
   <h2>Microphone</h2>
   <ul>
-    <li>Your mic activates only when you explicitly enable voice control (via Alt+V, the popup toggle, or the overlay button).</li>
-    <li>In Push-to-Talk mode, the mic is only active while you hold the designated key.</li>
-    <li>It is immediately released when you turn it off.</li>
-    <li>SetLoop does not record, store, or transmit audio.</li>
-    <li>All voice processing — including voice activity detection (Silero VAD) and speech-to-text (Whisper) — runs entirely on your device using bundled models. No audio data is sent to any server.</li>
+    <li>Your mic activates only when you explicitly enable voice control (Alt+V, the popup toggle, or the overlay button).</li>
+    <li>In Push-to-Talk mode, the mic is only active while you hold the key.</li>
+    <li>It is released the moment you turn voice control off.</li>
+  </ul>
+
+  <h2>Voice detection (local)</h2>
+  <ul>
+    <li>SetLoop runs <a href="https://github.com/snakers4/silero-vad">Silero VAD</a> — a small neural voice-activity-detection model — locally in your browser via ONNX Runtime Web.</li>
+    <li>The model is bundled with the extension (~2 MB). No data, audio, or inference output ever leaves your device.</li>
+    <li>Silero distinguishes your voice from video audio bleeding through speakers, so commands only fire on real close-mic speech.</li>
+  </ul>
+
+  <h2>Speech recognition</h2>
+  <ul>
+    <li>SetLoop calls <code>SpeechRecognition</code>, a standard Web API built into Chrome.</li>
+    <li>While the mic is active, Chrome streams audio to its speech service (Google cloud, or Chrome's on-device model when available) and returns a transcript.</li>
+    <li>SetLoop reads that transcript, matches a command, and acts on your video. The transcript is not stored.</li>
+    <li>Google's handling of audio is covered by <a href="https://policies.google.com/privacy">Google's privacy policy</a>. That transmission is performed by Chrome when SetLoop invokes the API; SetLoop never reads, stores, or forwards raw audio itself.</li>
   </ul>
 
   <h2>Local Storage</h2>
@@ -98,7 +111,7 @@
     <tr><td>activeTab</td><td>Access the current tab when you activate SetLoop</td></tr>
     <tr><td>storage</td><td>Save bookmarks and preferences locally on your device</td></tr>
     <tr><td>scripting</td><td>Inject the video control script on the current tab</td></tr>
-    <tr><td>offscreen</td><td>Run voice detection and transcription models in a background document</td></tr>
+    <tr><td>offscreen</td><td>Run the local voice-detection model in a background document</td></tr>
   </table>
   <p>No host permissions are requested. SetLoop has no blanket access to your browsing data. The extension makes zero network requests.</p>
 
@@ -109,7 +122,7 @@
   <p>The full source code is available for inspection. Every claim in this policy can be verified by reading the code.</p>
 
   <h2>Contact</h2>
-  <p>Questions about this privacy policy? Reach the developer at <a href="mailto:your-email@example.com">your-email@example.com</a>.</p>
+  <p>Questions about this privacy policy? Open an issue on <a href="https://github.com/harrison-daniel/SetLoop/issues">GitHub</a>.</p>
 
   <div class="footer">
     SetLoop is an open-source Chrome extension. This privacy policy applies to all versions distributed via the Chrome Web Store and GitHub.

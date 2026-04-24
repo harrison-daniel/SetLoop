@@ -7,7 +7,7 @@
 .vl-pill-on { border-color:rgba(74,222,128,0.22); box-shadow:0 1px 12px rgba(0,0,0,0.35),0 0 0 1px rgba(74,222,128,0.08); }
 .vl-pill-loop { border-color:rgba(245,158,66,0.28); box-shadow:0 1px 12px rgba(0,0,0,0.35),0 0 0 1px rgba(245,158,66,0.1); }
 
-/* Progress */
+/* Loop progress */
 .vl-progress { position:absolute; left:0; bottom:0; height:2px; width:0; background:rgba(245,158,66,0.6); border-radius:0 1px 0 100px; transition:width 0.08s linear; pointer-events:none; }
 
 /* Dot */
@@ -73,6 +73,7 @@
 .vl-qa-input:focus { border-color:rgba(245,158,66,0.4); }
 .vl-qa-at { color:rgba(255,255,255,0.25); font-size:10px; }
 .vl-qa-save { background:rgba(74,222,128,0.12) !important; color:#4ADE80 !important; border-color:rgba(74,222,128,0.2) !important; }
+.vl-qa-reset { background:rgba(255,255,255,0.06) !important; color:rgba(255,255,255,0.55) !important; border-color:rgba(255,255,255,0.08) !important; }
 
 /* Trigger mode dot */
 .vl-dot-trigger { background: #60A5FA; animation: vlPB 1s ease-in-out infinite; }

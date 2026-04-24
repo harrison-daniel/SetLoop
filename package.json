@@ -4,15 +4,6 @@
   "private": true,
   "description": "Voice-controlled video looping for Chrome. Practice any section of any tutorial hands-free.",
   "scripts": {
-    "build": "node build.js",
-    "download-models": "node scripts/download-models.js",
-    "setup": "npm install && node scripts/download-models.js && node build.js"
-  },
-  "dependencies": {
-    "@huggingface/transformers": "^4.0.0",
-    "onnxruntime-web": "^1.24.3"
-  },
-  "devDependencies": {
-    "esbuild": "^0.27.4"
+    "build": "node build.js"
   }
 }

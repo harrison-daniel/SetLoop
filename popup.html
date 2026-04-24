@@ -3,8 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  /* System fonts — zero external requests */
-
   :root {
     --bg: #0C0C0C;
     --sf: #151515;
@@ -27,136 +25,62 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Header */
   .hd { padding: 16px 16px 12px; border-bottom: 1px solid var(--bd); display: flex; align-items: center; gap: 10px; }
-  .hd-icon {
-    width: 28px; height: 28px; border-radius: 8px;
-    background: linear-gradient(135deg, #F59E42, #EB6D3D);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 2px 8px rgba(245,158,66,0.2);
-  }
+  .hd-icon { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #F59E42, #EB6D3D); display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(245,158,66,0.2); }
   .hd-icon svg { width: 14px; height: 14px; }
   .hd-text { flex: 1; }
   .hd-name { font-size: 14px; font-weight: 700; letter-spacing: -0.02em; }
   .hd-name span { color: var(--or); }
   .hd-sub { font-size: 10px; color: var(--t3); margin-top: 1px; }
 
-  /* Mode Selector */
-  .mode-section { border-bottom: 1px solid var(--bd); }
-  .mode-bar {
-    display: flex; gap: 4px;
-    padding: 8px 16px 10px;
-    border-bottom: 1px solid var(--bd);
-  }
-  .mode-btn {
-    flex: 1;
-    display: flex; align-items: center; justify-content: center; gap: 5px;
-    padding: 7px 0;
-    border: 1px solid var(--bd);
-    border-radius: 8px;
-    background: transparent;
-    color: var(--t2);
-    font-family: inherit;
-    font-size: 11px; font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
+  .mode-bar { display: flex; gap: 4px; padding: 8px 16px 10px; border-bottom: 1px solid var(--bd); }
+  .mode-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 0; border: 1px solid var(--bd); border-radius: 8px; background: transparent; color: var(--t2); font-family: inherit; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
   .mode-btn:hover { border-color: rgba(255,255,255,0.12); color: var(--t1); }
-  .mode-btn.mode-active {
-    background: rgba(74,222,128,0.08);
-    border-color: rgba(74,222,128,0.2);
-    color: var(--gn);
-  }
+  .mode-btn.mode-active { background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.2); color: var(--gn); }
 
-  /* Buffer slider */
-  .buffer-row { display:flex; align-items:center; gap:6px; padding:6px 16px 8px; }
-  .buffer-label { font-size:10px; color:var(--t3); white-space:nowrap; }
-  .buffer-slider { flex:1; height:3px; -webkit-appearance:none; appearance:none; background:rgba(255,255,255,0.08); border-radius:2px; outline:none; cursor:pointer; }
-  .buffer-slider::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:var(--or); cursor:pointer; }
-  .buffer-val { font-size:10px; color:var(--or); font-weight:600; min-width:18px; }
-
-  /* Toggle */
   .tg { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--bd); }
-  .tg-info { }
   .tg-title { font-weight: 600; font-size: 13px; }
   .tg-sub { font-size: 10px; color: var(--t2); margin-top: 2px; }
   .sw { position: relative; width: 38px; height: 20px; cursor: pointer; }
   .sw input { display: none; }
-  .sl {
-    position: absolute; inset: 0;
-    background: rgba(255,255,255,0.08);
-    border-radius: 20px;
-    transition: background 0.2s;
-  }
-  .sl::after {
-    content: ""; position: absolute;
-    width: 14px; height: 14px; left: 3px; top: 3px;
-    background: #fff; border-radius: 50%;
-    transition: transform 0.2s cubic-bezier(0.22,1,0.36,1);
-  }
+  .sl { position: absolute; inset: 0; background: rgba(255,255,255,0.08); border-radius: 20px; transition: background 0.2s; }
+  .sl::after { content: ""; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s cubic-bezier(0.22,1,0.36,1); }
   .sw input:checked + .sl { background: var(--gn); }
   .sw input:checked + .sl::after { transform: translateX(18px); }
 
-  /* Status */
   .st { padding: 8px 16px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--bd); }
   .st-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.12); }
   .st-dot.on { background: var(--gn); }
   .st-dot.lp { background: var(--or); }
   .st-txt { font-size: 11px; color: var(--t2); }
 
-  /* Privacy */
   .pv { padding: 8px 16px; border-bottom: 1px solid var(--bd); display: flex; align-items: flex-start; gap: 6px; }
   .pv svg { flex-shrink: 0; margin-top: 1px; color: var(--gn); width: 11px; height: 11px; }
   .pv p { font-size: 10px; color: var(--t3); line-height: 1.4; }
 
-  /* Sections */
   .sec { padding: 10px 16px; }
   .sec + .sec { border-top: 1px solid var(--bd); }
   .sec-t { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--t3); font-weight: 600; margin-bottom: 6px; }
 
-  /* Commands */
   .cm { display: flex; align-items: baseline; gap: 6px; padding: 3px 0; flex-wrap: wrap; }
-  .cm code {
-    font-family: 'DM Sans', monospace; font-size: 10.5px; font-weight: 600;
-    color: var(--or); background: var(--or-bg);
-    padding: 2px 6px; border-radius: 4px; white-space: nowrap;
-  }
+  .cm code { font-family: 'DM Sans', monospace; font-size: 10.5px; font-weight: 600; color: var(--or); background: var(--or-bg); padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
   .cm-d { font-size: 10px; color: var(--t3); }
-  .cm-note { font-size: 9.5px; color: var(--t2); margin-top: 6px; padding: 5px 8px; background: rgba(245,158,66,0.06); border-radius: 6px; border: 1px solid rgba(245,158,66,0.08); line-height: 1.4; }
 
-  /* Tips */
   .tip { font-size: 10px; color: var(--t2); line-height: 1.5; padding: 2px 0; }
   .tip b { color: var(--t1); font-weight: 600; }
 
-  /* Bookmarks */
   .bm-empty { font-size: 10.5px; color: var(--t3); font-style: italic; padding: 2px 0; }
-  .bm-item {
-    display: flex; align-items: center; gap: 6px; padding: 4px 0;
-    cursor: pointer; border-radius: 4px;
-  }
+  .bm-item { display: flex; align-items: center; gap: 6px; padding: 4px 0; cursor: pointer; border-radius: 4px; }
   .bm-item:hover .bm-label { color: var(--t1); }
-  .bm-time {
-    font-family: 'DM Sans', monospace; font-size: 11px; font-weight: 600;
-    color: var(--or); min-width: 34px;
-  }
+  .bm-time { font-family: 'DM Sans', monospace; font-size: 11px; font-weight: 600; color: var(--or); min-width: 34px; }
   .bm-label { font-size: 11px; color: var(--t2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color 0.15s; }
-  .bm-del {
-    width: 18px; height: 18px; border: none; background: none;
-    color: var(--t3); cursor: pointer; display: flex; align-items: center; justify-content: center;
-    border-radius: 4px; transition: color 0.15s, background 0.15s;
-    opacity: 0; font-size: 14px; line-height: 1;
-  }
+  .bm-del { width: 18px; height: 18px; border: none; background: none; color: var(--t3); cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: color 0.15s, background 0.15s; opacity: 0; font-size: 14px; line-height: 1; }
   .bm-item:hover .bm-del { opacity: 1; }
   .bm-del:hover { color: #F87171; background: rgba(248,113,113,0.1); }
 
-  /* Footer */
   .ft { padding: 8px 16px 12px; border-top: 1px solid var(--bd); }
   .ft-row { font-size: 10px; color: var(--t3); display: flex; align-items: center; gap: 3px; }
-  kbd {
-    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.06);
-    padding: 0 4px; border-radius: 3px;
-    font-family: 'DM Sans', monospace; font-size: 9.5px; font-weight: 600; color: var(--t2);
-  }
+  kbd { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.06); padding: 0 4px; border-radius: 3px; font-family: 'DM Sans', monospace; font-size: 9.5px; font-weight: 600; color: var(--t2); }
 </style>
 </head>
 <body>
@@ -174,7 +98,7 @@
 </div>
 
 <div class="tg">
-  <div class="tg-info">
+  <div>
     <div class="tg-title">Voice Control</div>
     <div class="tg-sub">Activates microphone on this tab</div>
   </div>
@@ -188,22 +112,34 @@
 
 <div class="pv">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-  <p>All voice processing runs locally on your device. Nothing recorded, stored, or sent.</p>
+  <p>Uses Chrome's built-in Web Speech API. Chrome handles transcription; SetLoop itself never records, stores, or forwards audio. See <a href="privacy.html" target="_blank" style="color:inherit;text-decoration:underline;">privacy</a>.</p>
 </div>
 
-<div class="mode-section">
-  <div class="tg-info" style="padding:10px 16px 2px;">
+<div>
+  <div style="padding:10px 16px 2px;">
     <div class="tg-title" id="modeLabel">Always On</div>
     <div class="tg-sub" id="modeSub">Mic stays on — speak commands anytime</div>
   </div>
   <div class="mode-bar">
-    <button class="mode-btn mode-active" id="modeAlways" title="Mic always on — speak commands anytime">
-      🎙 Always On
-    </button>
-    <button class="mode-btn" id="modePtt" title="Hold backtick key to speak">
-      ⌨ Hold ` Key
-    </button>
+    <button class="mode-btn mode-active" id="modeAlways">🎙 Always On</button>
+    <button class="mode-btn" id="modePtt">⌨ Hold ` Key</button>
   </div>
+</div>
+
+<div class="tg">
+  <div>
+    <div class="tg-title">Strict parsing</div>
+    <div class="tg-sub">Require "loop" prefix — blocks video false positives</div>
+  </div>
+  <label class="sw"><input type="checkbox" id="swStrict" checked><div class="sl"></div></label>
+</div>
+
+<div class="tg">
+  <div>
+    <div class="tg-title">Auto-duck video</div>
+    <div class="tg-sub">Lower video volume while listening</div>
+  </div>
+  <label class="sw"><input type="checkbox" id="swDuck"><div class="sl"></div></label>
 </div>
 
 <div class="sec" id="bmSec">
@@ -213,23 +149,28 @@
 
 <div class="sec">
   <div class="sec-t">Voice Commands</div>
-  <div class="cm"><code>loop last 30 at 75</code> <span class="cm-d">loop last 30 sec at 75% speed</span></div>
-  <div class="cm"><code>loop last 20 at 50 ramp</code> <span class="cm-d">start 50%, speed up each loop</span></div>
-  <div class="cm"><code>loop stop</code> <span class="cm-d">end loop, restore speed</span></div>
-  <div class="cm"><code>wider</code> / <code>tighter</code> <span class="cm-d">adjust loop start ±2s</span></div>
-  <div class="cm"><code>slower</code> / <code>faster</code> <span class="cm-d">adjust speed ±25%</span></div>
-  <div class="cm"><code>speed 63</code> <span class="cm-d">set exact speed (any %)</span></div>
-  <div class="cm"><code>back 10</code> / <code>forward 10</code> <span class="cm-d">skip seconds</span></div>
-  <div class="cm"><code>bookmark</code> / <code>mic off</code></div>
-  <div class="cm-note">💡 Prefix any short command with <code>loop</code> for better detection — e.g. <code>loop stop</code>, <code>loop slower</code></div>
+  <div class="cm"><code>loop last 30 at 75</code> <span class="cm-d">loop 30s at 75% speed</span></div>
+  <div class="cm"><code>loop last 20 at 50 ramp</code> <span class="cm-d">speed up each loop</span></div>
+  <div class="cm"><code>loop 1:30 to 2:00</code> <span class="cm-d">loop a time range</span></div>
+  <div class="cm"><code>mark start</code> / <code>mark end</code> <span class="cm-d">set in/out points</span></div>
+  <div class="cm"><code>stop</code> <span class="cm-d">end loop, restore speed</span></div>
+  <div class="cm"><code>wider [N]</code> / <code>tighter [N]</code> <span class="cm-d">start ±Ns (default 2)</span></div>
+  <div class="cm"><code>trim [N]</code> / <code>extend [N]</code> <span class="cm-d">end ±Ns (default 2)</span></div>
+  <div class="cm"><code>shift back [N]</code> / <code>shift forward [N]</code> <span class="cm-d">move whole loop ±Ns</span></div>
+  <div class="cm"><code>ramp</code> / <code>ramp off</code> <span class="cm-d">toggle speed ramp</span></div>
+  <div class="cm"><code>speed 63</code> <span class="cm-d">set exact speed</span></div>
+  <div class="cm"><code>slower</code> / <code>faster</code> <span class="cm-d">±25%</span></div>
+  <div class="cm"><code>back 10</code> / <code>forward 10</code> <span class="cm-d">seek</span></div>
+  <div class="cm"><code>bookmark</code> / <code>copy link</code> / <code>mic off</code></div>
 </div>
 
 <div class="sec">
-  <div class="sec-t">Quick Start</div>
-  <div class="tip">🎧 <b>Headphones + mic</b> = best hands-free experience</div>
-  <div class="tip">⌨ <b>Push-to-Talk</b> = most reliable — hold <kbd>`</kbd> key, speak, release</div>
-  <div class="tip">🔊 <b>Speakers?</b> Speak clearly and say <b>"loop stop"</b> not just "stop" — longer phrases are picked up better</div>
-  <div class="tip">🔄 <b>Switched tabs?</b> Toggle 🎙 off/on — Chrome pauses mic on inactive tabs</div>
+  <div class="sec-t">Tips</div>
+  <div class="tip"><b>Headphones</b> + close mic = most reliable. Eliminates video bleed.</div>
+  <div class="tip"><b>Push-to-Talk</b> never misfires — hold <kbd>`</kbd>, speak, release</div>
+  <div class="tip"><b>Speakers?</b> Enable Strict + Auto-duck. Prefix commands with "loop"</div>
+  <div class="tip"><b>mark end</b> also hears "mark and" / "mark out" — say it clearly</div>
+  <div class="tip">Voice needs an internet connection (Chrome Speech API)</div>
 </div>
 
 <div class="ft">
