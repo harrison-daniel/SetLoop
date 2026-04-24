@@ -58,6 +58,21 @@
   .ob-btn { padding: 10px 20px; border-radius: 10px; border: none; background: linear-gradient(135deg,#F59E42,#EB6D3D); color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit; }
   .ob-btn:disabled { opacity: 0.6; cursor: default; }
   .ob-btn.granted { background: rgba(74,222,128,0.15); color: #4ADE80; }
+
+  .tips-card {
+    display: flex; gap: 14px;
+    padding: 16px 18px;
+    background: var(--orange-bg);
+    border: 1px solid rgba(245,158,66,0.12);
+    border-radius: 14px;
+    margin-bottom: 40px;
+  }
+  .tips-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; line-height: 1; }
+  .tips-body { flex: 1; }
+  .tips-title { font-size: 13px; font-weight: 600; color: var(--orange); margin-bottom: 8px; }
+  .tips-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .tips-list li { font-size: 13px; color: var(--text2); line-height: 1.5; padding-left: 14px; position: relative; }
+  .tips-list li::before { content: "·"; position: absolute; left: 0; color: var(--orange); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -103,6 +118,17 @@
   </div>
 
   <script src="onboarding-mic.js"></script>
+
+  <div class="tips-card">
+    <div class="tips-icon">💡</div>
+    <div class="tips-body">
+      <div class="tips-title">If commands aren't being picked up</div>
+      <ul class="tips-list">
+        <li><strong>Turn your speaker volume down a little</strong> — the mic picks up audio from your speakers, which can drown out your voice or trigger false commands.</li>
+        <li><strong>Switch to Push-to-Talk</strong> — hold the <kbd>`</kbd> key while speaking. The mic only listens while you hold it, so video audio never bleeds through.</li>
+      </ul>
+    </div>
+  </div>
 
   <div class="commands-section">
     <div class="section-label">Voice Commands</div>
