@@ -5,3 +5,17 @@ models/
 package-lock.json
 .DS_Store
 Thumbs.db
+
+# Claude Code workspace
+.claude/
+
+# Dead experiments — kept locally but not tracked
+sidepanel.html
+sidepanel.js
+silero-worker.js
+sr-frame.html
+sr-frame.js
+vendor/
+src/
+offscreen.html
+offscreen.js

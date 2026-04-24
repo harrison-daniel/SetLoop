@@ -2,10 +2,10 @@
   "manifest_version": 3,
   "name": "SetLoop",
   "short_name": "SetLoop",
-  "version": "3.0.0",
+  "version": "1.0.0",
   "minimum_chrome_version": "120",
-  "description": "Voice-controlled video looping. Say 'loop last 30 at 50' to practice any section hands-free.",
-  "homepage_url": "https://github.com/harrison-daniel/SetLoop",
+  "description": "Voice-controlled video looping for musicians. Say 'loop last 30 at 50' to practice any section hands-free.",
+  "homepage_url": "https://setloop.app",
   "permissions": [
     "activeTab",
     "storage",
