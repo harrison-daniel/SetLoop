@@ -306,9 +306,16 @@
     t = t.replace(/\bgroup\s+class\b/gi, "loop last");     // "Group class 16..."
     t = t.replace(/\bblueglass\b/gi, "loop last");         // "Blueglass 17..."
     t = t.replace(/\bblue\s*glass\b/gi, "loop last");      // "Blue glass 17..."
+    t = t.replace(/\broup\b/gi, "loop");                   // "Roup, last"
+    t = t.replace(/\bmoop\b/gi, "loop");                   // "Moop stop"
     t = t.replace(/\bwe\s+can\b(?=\s+stop)/gi, "loop");   // "we can stop"
 
-    // Phase 4: Compound normalization
+    // Phase 4: "last" mishears — very common, Whisper hears "blast"/"class"
+    t = t.replace(/\bblast\b/gi, "last");
+    t = t.replace(/\bclass\b/gi, "last");
+    t = t.replace(/\bass\b(?=\s+\d)/gi, "last");          // "loop as 14" → "loop last 14"
+
+    // Compound normalization
     t = t.replace(/\bloops?\s+last/gi, "loop last");
     t = t.replace(/\bthe\s+next\b/gi, "loop last");
     t = t.replace(/\bokay\s*,?\s*that'?s?\b/gi, "loop last");
