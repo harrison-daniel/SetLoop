@@ -1,6 +1,6 @@
 {
   "name": "setloop",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Voice-controlled video looping for Chrome. Practice any section of any tutorial hands-free.",
   "scripts": {
