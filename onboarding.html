@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SetLoop — Get Started</title>
+<style>
+  /* System fonts — zero external requests */
+
+  :root {
+    --bg: #0A0A0A;
+    --surface: #141414;
+    --border: rgba(255,255,255,0.06);
+    --text: #E8E8E8;
+    --text2: rgba(255,255,255,0.5);
+    --text3: rgba(255,255,255,0.25);
+    --orange: #F59E42;
+    --orange-bg: rgba(245,158,66,0.08);
+    --green: #4ADE80;
+    --green-bg: rgba(74,222,128,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 80px 24px 60px;
+  }
+
+  /* ── Hero ── */
+  .hero { text-align: center; margin-bottom: 64px; }
+
+  .icon {
+    width: 64px; height: 64px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #F59E42 0%, #EB6D3D 100%);
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 32px rgba(245,158,66,0.2);
+    animation: fadeUp 0.6s ease both;
+  }
+  .icon svg { width: 28px; height: 28px; }
+
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 12px;
+    animation: fadeUp 0.6s ease 0.1s both;
+  }
+  h1 span { color: var(--orange); }
+
+  .subtitle {
+    font-size: 16px;
+    color: var(--text2);
+    line-height: 1.6;
+    max-width: 440px;
+    margin: 0 auto;
+    animation: fadeUp 0.6s ease 0.2s both;
+  }
+
+  /* ── Steps ── */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 48px;
+  }
+
+  .step {
+    display: flex;
+    gap: 16px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    transition: border-color 0.2s;
+    animation: fadeUp 0.5s ease both;
+  }
+  .step:nth-child(1) { animation-delay: 0.3s; }
+  .step:nth-child(2) { animation-delay: 0.4s; }
+  .step:nth-child(3) { animation-delay: 0.5s; }
+  .step:hover { border-color: rgba(255,255,255,0.1); }
+
+  .step-num {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .step:nth-child(1) .step-num { background: var(--orange-bg); color: var(--orange); }
+  .step:nth-child(2) .step-num { background: var(--green-bg); color: var(--green); }
+  .step:nth-child(3) .step-num { background: rgba(139,92,246,0.1); color: #A78BFA; }
+
+  .step-body { flex: 1; }
+  .step-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+  .step-desc {
+    font-size: 13.5px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+
+  kbd {
+    display: inline-block;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-family: 'DM Sans', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.65);
+    vertical-align: 1px;
+  }
+
+  /* ── Commands Preview ── */
+  .commands-section {
+    margin-bottom: 48px;
+    animation: fadeUp 0.5s ease 0.6s both;
+  }
+
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .cmd-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .cmd {
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    transition: border-color 0.2s;
+  }
+  .cmd:hover { border-color: rgba(255,255,255,0.1); }
+
+  .cmd code {
+    display: block;
+    font-family: 'DM Sans', monospace;
+    font-weight: 600;
+    font-size: 12.5px;
+    color: var(--orange);
+    margin-bottom: 3px;
+  }
+  .cmd small {
+    color: var(--text3);
+    font-size: 11.5px;
+  }
+
+  /* ── Privacy Badge ── */
+  .privacy-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 18px;
+    background: var(--green-bg);
+    border: 1px solid rgba(74,222,128,0.1);
+    border-radius: 12px;
+    margin-bottom: 40px;
+    animation: fadeUp 0.5s ease 0.7s both;
+  }
+  .privacy-badge svg { flex-shrink: 0; color: var(--green); }
+  .privacy-badge p {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+  .privacy-badge strong { color: var(--green); font-weight: 600; }
+
+  /* ── CTA ── */
+  .cta {
+    text-align: center;
+    animation: fadeUp 0.5s ease 0.8s both;
+  }
+  .cta-text {
+    font-size: 14px;
+    color: var(--text2);
+    margin-bottom: 4px;
+  }
+  .cta-highlight {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="hero">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+    </div>
+    <h1>Set<span>Loop</span></h1>
+    <p class="subtitle">Control any video with your voice. Loop sections, change speed, bookmark moments — all without touching your keyboard.</p>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">Open any video</div>
+        <div class="step-desc">Navigate to YouTube, Vimeo, Coursera — any page with a video player.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">Press <kbd>Alt</kbd> + <kbd>V</kbd></div>
+        <div class="step-desc">Or click the SetLoop icon in your toolbar. This activates your microphone — a green dot confirms you're live.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">Say a command</div>
+        <div class="step-desc">Try <strong>"loop last 30 at 50 percent"</strong> to loop the last 30 seconds at half speed. Say <strong>"stop"</strong> when done.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="commands-section">
+    <div class="section-label">Voice Commands</div>
+    <div class="cmd-grid">
+      <div class="cmd">
+        <code>"loop last 30 at 50%"</code>
+        <small>Loop + slow down</small>
+      </div>
+      <div class="cmd">
+        <code>"loop 1:30 to 2:00"</code>
+        <small>Loop a range</small>
+      </div>
+      <div class="cmd">
+        <code>"stop"</code>
+        <small>End loop, restore speed</small>
+      </div>
+      <div class="cmd">
+        <code>"speed 75"</code>
+        <small>Set playback speed</small>
+      </div>
+      <div class="cmd">
+        <code>"slower" / "faster"</code>
+        <small>Adjust by 25%</small>
+      </div>
+      <div class="cmd">
+        <code>"back 10"</code>
+        <small>Rewind 10 seconds</small>
+      </div>
+      <div class="cmd">
+        <code>"bookmark"</code>
+        <small>Save this moment</small>
+      </div>
+      <div class="cmd">
+        <code>"copy link"</code>
+        <small>Copy timestamped URL</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="privacy-badge">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+    <p><strong>Privacy-first.</strong> Your mic is only active when you turn it on. SetLoop never records, stores, or sends any audio or data. Everything stays on your device.</p>
+  </div>
+
+  <div class="cta">
+    <p class="cta-text">You're all set.</p>
+    <p class="cta-highlight">Open a video and press <kbd>Alt</kbd> + <kbd>V</kbd> to start.</p>
+  </div>
+</div>
+
+</body>
+</html>
