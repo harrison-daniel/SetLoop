@@ -56,15 +56,10 @@
 
   function syncState() {
     try {
-      chrome?.storage?.session?.set({
-        vl_state: { listening: state.listening, loopActive: state.loop.active, mode: state.mode },
-      });
-    } catch {
-      // Fallback for older Chrome without storage.session
       chrome?.storage?.local?.set({
         vl_state: { listening: state.listening, loopActive: state.loop.active, mode: state.mode },
       });
-    }
+    } catch {}
     chrome.runtime.sendMessage({
       type: "state-update",
       listening: state.listening,
@@ -231,8 +226,121 @@
   function parseTime(s) { s = s.trim(); const c = s.match(/^(\d+):(\d+)$/); if (c) return +c[1] * 60 + +c[2]; const m = s.match(/(\w+)\s+minutes?\s*(?:and\s+)?(\w+)?\s*(?:seconds?)?/i); if (m) { const v = num(m[1]); return isNaN(v) ? NaN : v * 60 + (m[2] ? (num(m[2]) || 0) : 0); } const o = s.match(/(\w+)\s+minutes?/i); if (o) { const v = num(o[1]); return isNaN(v) ? NaN : v * 60; } const z = s.match(/(\w+)\s*(?:seconds?|secs?)?$/i); if (z) { const v = num(z[1]); return isNaN(v) ? NaN : v; } return NaN; }
 
   // ═══ Parser ═══
+  // ═══ Phonetic Command Matching ═══
+  // Double Metaphone approximation for our small vocabulary.
+  // Maps phonetically similar words to command words automatically.
+  const COMMAND_WORDS = {
+    loop: ["loop", "lupe", "lup", "loo"],
+    last: ["last", "las", "lass"],
+    stop: ["stop", "stap", "stp"],
+    wider: ["wider", "wyder"],
+    tighter: ["tighter", "tytr"],
+    slower: ["slower", "slowr"],
+    faster: ["faster", "fastr"],
+    speed: ["speed", "sped", "spd"],
+    back: ["back", "bak", "bac"],
+    forward: ["forward", "fwd"],
+    bookmark: ["bookmark", "bookmrk"],
+    pause: ["pause", "paws", "paz"],
+    play: ["play", "ply"],
+  };
+
+  // Exact variant matching only — edit distance was too aggressive
+  // (e.g., "stop" → "loop" at distance 2). The explicit whisperFix
+  // table handles observed mishears. This catches remaining exact variants.
+  function phoneticMatch(word) {
+    const w = word.toLowerCase().replace(/[^a-z]/g, "");
+    if (w.length < 2) return word;
+    for (const [cmd, variants] of Object.entries(COMMAND_WORDS)) {
+      for (const v of variants) {
+        if (w === v) return cmd;
+      }
+    }
+    return word;
+  }
+
+  function phoneticFix(text) {
+    return text.replace(/\b[a-zA-Z]+\b/g, w => phoneticMatch(w));
+  }
+
+  // Whisper correction pipeline: explicit fixes → phonetic matching
+  function whisperFix(raw) {
+    let t = raw;
+
+    // Phase 1: Fix compound "set loop" patterns first (from real logs)
+    // Whisper hears "set loop" as these consistently:
+    t = t.replace(/\bthat\s+loop\b/gi, "loop");        // most common
+    t = t.replace(/\bstep[,.]?\s+loop\b/gi, "loop");   // "Step, loop"
+    t = t.replace(/\bset\s+loop\b/gi, "loop");          // correct hear
+    t = t.replace(/\bso\s+the\s+last\b/gi, "loop last"); // "So the last"
+    t = t.replace(/\bst\.?\s*luke\b/gi, "loop");        // "St. Luke"
+    t = t.replace(/\bsalute\b/gi, "loop");              // "Salute"
+    t = t.replace(/\bdeathloop\b/gi, "loop");           // "Deathloop"
+    t = t.replace(/\bcertainly\b/gi, "loop");           // "Certainly"
+    t = t.replace(/\bat\s+loop\b/gi, "loop");           // "at Loop"
+
+    // Phase 2: Fix standalone "set" before loop-like words
+    t = t.replace(/\b(?:that|said|sit|sat|this|step)\b(?=\s+(?:loop|last|stop|move|could))/gi, "set");
+    t = t.replace(/\bset\s+(?=last|stop|move)/gi, "loop ");
+
+    // Phase 3: Fix "loop" mishears
+    t = t.replace(/\bluke\b/gi, "loop");
+    t = t.replace(/\blook\b/gi, "loop");
+    t = t.replace(/\blouie\b/gi, "loop");
+    t = t.replace(/\blouvre\b/gi, "loop");
+    t = t.replace(/\blou\b/gi, "loop");
+    t = t.replace(/\bmove\b(?=\s*[,.]?\s*stop)/gi, "loop");  // "that move, stop"
+    t = t.replace(/\bblue\b/gi, "loop");
+    t = t.replace(/\bwe'?ve\b/gi, "loop");
+    t = t.replace(/\bwould\b(?=\s+(?:last|stop))/gi, "loop"); // "would last/stop"
+    t = t.replace(/\bwho[op]+\b/gi, "loop");
+    t = t.replace(/\bnew\b(?=\s+(?:last|stop|fast|slow|wide|tight))/gi, "loop");
+    t = t.replace(/\bcouldn'?t\b(?=\s+stop)/gi, "loop");  // "couldn't stop"
+    t = t.replace(/\boops\b/gi, "loop");                   // "Oops stop"
+    t = t.replace(/\bnope\b/gi, "loop");                   // "Nope, stop"
+    t = t.replace(/\bwe'?ll\b(?=\s+stop)/gi, "loop");     // "we'll stop"
+    t = t.replace(/\blupa\b/gi, "loop");                   // "Lupa, stop"
+    t = t.replace(/\bscott\b/gi, "stop");                  // "Luke Scott" → "loop stop"
+    t = t.replace(/\bloot\b/gi, "loop");                   // "loot last"
+    t = t.replace(/\bwhoops\b/gi, "loop");                 // "whoops, stop"
+    t = t.replace(/\bgroup\s+class\b/gi, "loop last");     // "Group class 16..."
+    t = t.replace(/\bblueglass\b/gi, "loop last");         // "Blueglass 17..."
+    t = t.replace(/\bblue\s*glass\b/gi, "loop last");      // "Blue glass 17..."
+    t = t.replace(/\bwe\s+can\b(?=\s+stop)/gi, "loop");   // "we can stop"
+
+    // Phase 4: Compound normalization
+    t = t.replace(/\bloops?\s+last/gi, "loop last");
+    t = t.replace(/\bthe\s+next\b/gi, "loop last");
+    t = t.replace(/\bokay\s*,?\s*that'?s?\b/gi, "loop last");
+
+    // Phase 5: "at" and number fixes
+    // Split joined numbers: "1941" → "19 at 41" (Whisper joins "19 at 41" into "1941")
+    t = t.replace(/\b(\d{2})(\d{2,3})\b/g, (_, a, b) => {
+      const na = +a, nb = +b;
+      if (na >= 5 && na <= 60 && nb >= 10 && nb <= 200) return `${na} at ${nb}`;
+      return a + b;
+    });
+    t = t.replace(/\b(\d+)\s+to\s+(\d+)/gi, "$1 at $2");
+    t = t.replace(/\b(\d+)\s*x\s*(\d+)/gi, "$1 at $2");
+    t = t.replace(/(\d+)-(\d+)/g, "$1 at $2");
+    t = t.replace(/\btwo\s+(\d+)/gi, "to $1");
+
+    // Phase 6: "stop" mishears
+    t = t.replace(/\bstop it\b/gi, "stop");
+    t = t.replace(/\bstyle\b/gi, "stop");
+    t = t.replace(/\bsky\b/gi, "stop");                  // "blue sky" → "loop stop"
+
+    // Phase 7: Spacing cleanup
+    t = t.replace(/loop\s*last/gi, "loop last");
+
+    // Phase 8: Phonetic matching — catches remaining mishears algorithmically
+    t = phoneticFix(t);
+
+    return t;
+  }
+
   function parse(raw) {
-    let c = raw.toLowerCase().trim().replace(/[.!,?]+/g, "");
+    let c = whisperFix(raw).toLowerCase().trim().replace(/[.!,?]+/g, "");
     c = c.replace(/loop\s+lasts?\s+/g, "loop last ");
     c = c.replace(/\s+i\s+think\s+/g, " at ");
 
@@ -330,7 +438,16 @@
   function startListening() {
     state.listening = true;
     setStatus(state.vadReady ? "Listening" : "Loading models…", state.vadReady ? "listening" : "paused");
+    const timeout = setTimeout(() => {
+      if (state.listening && !state.vadReady) {
+        setStatus("Voice unavailable", "error");
+        toast("Could not start voice — try toggling off/on");
+        state.listening = false;
+        syncState();
+      }
+    }, 10000);
     chrome.runtime.sendMessage({ type: "start-voice" }, (r) => {
+      clearTimeout(timeout);
       if (chrome.runtime.lastError || !r?.ok) {
         setStatus("Voice unavailable", "error");
         toast("Could not start voice");
@@ -362,7 +479,7 @@
   const VALID_TYPES = new Set([
     "ping", "toggle", "status", "set-mode", "quick-bookmark",
     "get-bookmarks", "go-to-bookmark", "delete-bookmark",
-    "vad-status", "vad-speech-start", "vad-transcript",
+    "vad-status", "vad-speech-start", "vad-speech-end", "vad-transcript",
   ]);
 
   chrome.runtime.onMessage.addListener((msg, sender, respond) => {
@@ -419,19 +536,65 @@
       }
       case "vad-speech-start": {
         const v = getVideo();
-        state.speechStartTime = v ? v.currentTime : null;
-        showInterimOnPill("Listening…");
+        // Buffer 0.5s before VAD fired — accounts for VAD detection lag
+        // so "loop last 30" anchors to when user actually started speaking
+        state.speechStartTime = v ? Math.max(0, v.currentTime - 0.5) : null;
+        // Dip video volume while speaking — helps mic pick up voice over speakers
+        if (v && !state._savedVol) {
+          state._savedVol = v.volume;
+          v.volume = Math.max(0, v.volume - 0.4);
+        }
+        // Subtle dot pulse — don't show text, don't distract from practice
+        if (overlay) $("#vlDot").classList.add("vl-dot-hearing");
+        break;
+      }
+      case "vad-speech-end": {
+        // Restore volume, show brief processing pulse
+        const ve = getVideo();
+        if (ve && state._savedVol != null) {
+          ve.volume = state._savedVol;
+          state._savedVol = null;
+        }
+        if (overlay) {
+          $("#vlDot").classList.remove("vl-dot-hearing");
+          $("#vlDot").classList.add("vl-dot-processing");
+        }
         break;
       }
       case "vad-transcript": {
         if (typeof msg.text !== "string") break;
         const text = msg.text.trim();
         if (!text) break;
+        // Restore volume in case speech-end didn't fire
+        const vt = getVideo();
+        if (vt && state._savedVol != null) {
+          vt.volume = state._savedVol;
+          state._savedVol = null;
+        }
+        if (overlay) {
+          $("#vlDot").classList.remove("vl-dot-hearing", "vl-dot-processing");
+        }
         console.log(`[SetLoop] heard: "${text}"`);
-        showInterimOnPill(text);
-        const cmd = parse(text);
-        if (cmd) { console.log("[SetLoop] cmd:", cmd); exec(cmd); }
-        else { state.speechStartTime = null; }
+        let cmd;
+        try {
+          cmd = parse(text);
+        } catch (err) {
+          console.error("[SetLoop] parse error:", err);
+          cmd = null;
+        }
+        const fixed = whisperFix(text).toLowerCase().trim().replace(/[.!,?]+/g, "");
+        if (!cmd) console.log(`[SetLoop] fixed: "${fixed}" → no match`);
+        if (cmd) {
+          console.log("[SetLoop] cmd:", cmd);
+          exec(cmd);
+        } else {
+          // Not a command — brief red flash so user knows to repeat
+          state.speechStartTime = null;
+          if (overlay) {
+            $("#vlDot").classList.add("vl-dot-miss");
+            setTimeout(() => $("#vlDot")?.classList.remove("vl-dot-miss"), 800);
+          }
+        }
         break;
       }
     }

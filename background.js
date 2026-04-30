@@ -1,10 +1,4 @@
 const injected = new Set();
-let offscreenReady = false;
-
-// ── Storage: session for ephemeral state ─────────────────────────────
-chrome.storage.session.setAccessLevel({
-  accessLevel: "TRUSTED_AND_UNTRUSTED_CONTEXTS",
-});
 
 // ── First Install → open onboarding ──────────────────────────────────
 chrome.runtime.onInstalled.addListener(({ reason }) => {
@@ -14,17 +8,22 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 });
 
 // ── Offscreen Document Management ────────────────────────────────────
+let offscreenCreating = null;
+
 async function ensureOffscreen() {
   const contexts = await chrome.runtime.getContexts({
     contextTypes: ["OFFSCREEN_DOCUMENT"],
   });
   if (contexts.length > 0) return;
 
-  await chrome.offscreen.createDocument({
+  // Prevent concurrent creation attempts
+  if (offscreenCreating) return offscreenCreating;
+  offscreenCreating = chrome.offscreen.createDocument({
     url: "offscreen.html",
     reasons: ["USER_MEDIA"],
     justification: "Local voice activity detection and speech recognition via ONNX models",
   });
+  try { await offscreenCreating; } finally { offscreenCreating = null; }
 }
 
 async function closeOffscreen() {
@@ -53,7 +52,7 @@ chrome.commands.onCommand.addListener(async (command) => {
 // ── Message Routing ──────────────────────────────────────────────────
 const VALID_POPUP = ["inject-and-toggle", "inject-and-status"];
 const VALID_CONTENT = ["state-update", "start-voice", "stop-voice", "set-sensitivity"];
-const VALID_OFFSCREEN = ["vad-status", "vad-speech-start", "vad-transcript"];
+const VALID_OFFSCREEN = ["vad-status", "vad-speech-start", "vad-speech-end", "vad-transcript"];
 
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   if (sender.id !== chrome.runtime.id) return;
@@ -63,6 +62,11 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   if (VALID_POPUP.includes(msg.type)) {
     handlePopupMessage(msg, respond);
     return true;
+  }
+
+  // Mic permission granted from permission page
+  if (msg.type === "mic-permission-granted") {
+    return false;
   }
 
   // Messages from content script → forward to offscreen or handle locally
@@ -116,7 +120,9 @@ async function handleContentMessage(msg, sender, respond) {
   if (msg.type === "start-voice") {
     try {
       await ensureOffscreen();
-      chrome.runtime.sendMessage({ type: "start-pipeline" });
+      chrome.runtime.sendMessage({ type: "start-pipeline" }, () => {
+        if (chrome.runtime.lastError) { /* offscreen may still be loading */ }
+      });
       respond({ ok: true });
     } catch (err) {
       respond({ ok: false, error: err.message });
@@ -140,6 +146,12 @@ async function handleContentMessage(msg, sender, respond) {
 }
 
 async function handleOffscreenMessage(msg) {
+  // Mic permission needed — open the one-time permission page
+  if (msg.type === "vad-status" && msg.status === "error" &&
+      typeof msg.message === "string" && msg.message.includes("Mic")) {
+    chrome.tabs.create({ url: "mic-permission.html" });
+  }
+
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 

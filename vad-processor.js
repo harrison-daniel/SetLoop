@@ -1,15 +1,13 @@
 /**
  * AudioWorklet processor for voice activity detection preprocessing.
- * Runs on the Web Audio rendering thread — not throttled by tab visibility.
- * Resamples 48kHz mic input to 16kHz and computes RMS energy per frame.
+ * AudioContext runs at 16kHz (Chrome resamples from mic natively).
+ * Accumulates 512-sample frames for Silero VAD and computes RMS energy.
  */
 class VadProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this.FRAME_SIZE = 512;
-    this.RATIO = 3; // 48kHz → 16kHz
-    this.SAMPLES_NEEDED = this.FRAME_SIZE * this.RATIO;
-    this.buf = new Float32Array(this.SAMPLES_NEEDED);
+    this.buf = new Float32Array(this.FRAME_SIZE);
     this.pos = 0;
   }
 
@@ -20,13 +18,12 @@ class VadProcessor extends AudioWorkletProcessor {
     for (let i = 0; i < input.length; i++) {
       this.buf[this.pos++] = input[i];
 
-      if (this.pos >= this.SAMPLES_NEEDED) {
-        const frame = new Float32Array(this.FRAME_SIZE);
+      if (this.pos >= this.FRAME_SIZE) {
         let sum = 0;
         for (let j = 0; j < this.FRAME_SIZE; j++) {
-          frame[j] = this.buf[j * this.RATIO];
-          sum += frame[j] * frame[j];
+          sum += this.buf[j] * this.buf[j];
         }
+        const frame = this.buf.slice();
         this.port.postMessage(
           { audio: frame, rms: Math.sqrt(sum / this.FRAME_SIZE) },
           [frame.buffer]
