@@ -78,7 +78,7 @@
     <li>In Push-to-Talk mode, the mic is only active while you hold the designated key.</li>
     <li>It is immediately released when you turn it off.</li>
     <li>SetLoop does not record, store, or transmit audio.</li>
-    <li>Chrome's Web Speech API may use Google's servers for transcription — this is Chrome's built-in behavior, not ours. See <a href="https://policies.google.com/privacy">Google's Privacy Policy</a>.</li>
+    <li>All voice processing — including voice activity detection (Silero VAD) and speech-to-text (Whisper) — runs entirely on your device using bundled models. No audio data is sent to any server.</li>
   </ul>
 
   <h2>Local Storage</h2>
@@ -98,8 +98,9 @@
     <tr><td>activeTab</td><td>Access the current tab when you activate SetLoop</td></tr>
     <tr><td>storage</td><td>Save bookmarks and preferences locally on your device</td></tr>
     <tr><td>scripting</td><td>Inject the video control script on the current tab</td></tr>
+    <tr><td>offscreen</td><td>Run voice detection and transcription models in a background document</td></tr>
   </table>
-  <p>No host permissions are requested. SetLoop has no blanket access to your browsing data.</p>
+  <p>No host permissions are requested. SetLoop has no blanket access to your browsing data. The extension makes zero network requests.</p>
 
   <h2>Chrome Web Store Compliance</h2>
   <p>The use of information received from Google APIs adheres to the <a href="https://developer.chrome.com/docs/webstore/program-policies">Chrome Web Store User Data Policy</a>, including the Limited Use requirements.</p>
