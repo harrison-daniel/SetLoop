@@ -2,69 +2,78 @@
 
 Voice-controlled video looping for Chrome. Practice any section of any tutorial hands-free.
 
-**Say "loop last 30 at 75"** → loops the last 30 seconds at 75% speed. Say **"loop stop"** when done.
+Say **"loop last 30 at 75"** — loops the last 30 seconds at 75% speed. Say **"loop stop"** when done.
 
 ## Install
 
 [Chrome Web Store →](#) *(link when published)*
 
-Or load unpacked: clone this repo → `chrome://extensions` → Developer Mode → Load Unpacked → select folder.
+Or load unpacked:
+1. Clone this repo and run `node build.js`
+2. Open `chrome://extensions`, toggle Developer mode
+3. Click **Load unpacked** and select the `dist/` folder
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `loop last 30 at 75` | Loop last 30s at 75% speed |
+| `loop last 30 at 75` | Loop the last 30s at 75% speed |
 | `loop last 20 at 50 ramp` | Start at 50%, increase speed each loop |
-| `loop stop` | End loop, restore original speed |
-| `wider` / `tighter` | Adjust loop start ±2s |
+| `loop stop` | End the loop, restore speed |
+| `wider` / `tighter` | Adjust the loop start ±2s |
 | `slower` / `faster` | Adjust speed ±25% |
-| `speed 63` | Set exact speed (any %) |
+| `speed 63` | Set an exact speed (any %) |
 | `back 10` / `forward 10` | Skip seconds |
-| `bookmark` | Save current timestamp |
-| `mic off` | Turn off microphone |
+| `bookmark` | Save the current timestamp |
+| `mic off` | Turn off the microphone |
 
-**Tip:** Prefix short commands with "loop" (e.g. `loop stop`, `loop slower`) for better voice detection.
+Tip: prefix short commands with "loop" (`loop stop`, `loop slower`) in Always-On mode so ambient speech from the video doesn't trigger actions.
 
 ## Modes
 
-- **Always On** (default) — mic stays on, speak commands anytime
-- **Push-to-Talk** — hold `` ` `` key, speak, release. Most reliable.
+- **Always On** — mic stays on, speak commands anytime
+- **Push-to-Talk** — hold the `` ` `` key, speak, release. Most reliable in noisy rooms.
 
-## Keyboard Shortcuts
+## Keyboard shortcuts
 
 | Shortcut | Action |
 |---|---|
 | `Alt+V` | Toggle voice on/off |
-| `Alt+B` | Bookmark current time |
-| Hold `` ` `` | Push-to-Talk |
+| `Alt+B` | Bookmark the current time |
+| Hold `` ` `` | Push-to-Talk (when in PTT mode) |
 
 ## Privacy
 
-- **Zero data collection** — nothing recorded, stored, or sent
-- Mic only active when you enable it
-- No accounts, no tracking, no analytics, no network requests
-- All preferences stored locally via `chrome.storage.local`
-- Chrome's Web Speech API may use Google servers for transcription — that's Chrome's behavior, not ours
+SetLoop uses Chrome's built-in `SpeechRecognition` API. While the mic is active, Chrome transmits audio to Google's speech service and returns a transcript. SetLoop reads the transcript, matches a command, and acts — it does not store or forward the audio itself.
 
-Full privacy policy: [setloop.app/privacy](https://setloop.app/privacy)
+- No accounts, analytics, tracking, or telemetry
+- No host permissions
+- Bookmarks and preferences stay on your device via `chrome.storage.local`
+
+Full policy: [PRIVACY.md](./PRIVACY.md)
 
 ## Permissions
 
 | Permission | Why |
 |---|---|
-| `activeTab` | Access current tab to inject looping script |
+| `activeTab` | Access the current tab when you activate SetLoop |
 | `storage` | Save bookmarks and preferences locally |
-| `scripting` | Inject content script when you activate SetLoop |
-
-No host permissions. No `<all_urls>`. Zero footprint on pages you don't use it on.
+| `scripting` | Inject the overlay/control script on the current tab |
 
 ## Tech
 
 - Manifest V3
-- Vanilla JS, no dependencies, no build step
-- 22KB packaged
+- Zero runtime dependencies, no build-time compilation, vanilla JS
 - CSP: `script-src 'self'; object-src 'self'`
+- `SpeechRecognition` runs in the content script (page origin) so user-gesture propagation is clean and mic permission follows the standard per-site prompt
+
+## Build
+
+```
+node build.js
+```
+
+Output in `dist/`. Load that folder as an unpacked extension.
 
 ## License
 

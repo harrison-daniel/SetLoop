@@ -1,46 +1,21 @@
-const injected = new Set();
+// SetLoop — Background service worker.
+//
+// Thin message router. SpeechRecognition runs in the content script
+// (activation transferred from popup click via chrome.scripting.executeScript).
+// This worker: injects content + overlay CSS on demand, forwards popup
+// toggles/queries to the active tab, drives the toolbar badge, and wires
+// Alt+V / Alt+B keyboard commands.
 
-// ── First Install → open onboarding ──────────────────────────────────
 chrome.runtime.onInstalled.addListener(({ reason }) => {
-  if (reason === "install") {
-    chrome.tabs.create({ url: "onboarding.html" });
-  }
+  if (reason === "install") chrome.tabs.create({ url: "onboarding.html" });
 });
 
-// ── Offscreen Document Management ────────────────────────────────────
-let offscreenCreating = null;
+// Keyboard commands ──────────────────────────────────────────────────
 
-async function ensureOffscreen() {
-  const contexts = await chrome.runtime.getContexts({
-    contextTypes: ["OFFSCREEN_DOCUMENT"],
-  });
-  if (contexts.length > 0) return;
-
-  // Prevent concurrent creation attempts
-  if (offscreenCreating) return offscreenCreating;
-  offscreenCreating = chrome.offscreen.createDocument({
-    url: "offscreen.html",
-    reasons: ["USER_MEDIA"],
-    justification: "Local voice activity detection and speech recognition via ONNX models",
-  });
-  try { await offscreenCreating; } finally { offscreenCreating = null; }
-}
-
-async function closeOffscreen() {
-  const contexts = await chrome.runtime.getContexts({
-    contextTypes: ["OFFSCREEN_DOCUMENT"],
-  });
-  if (contexts.length > 0) {
-    await chrome.offscreen.closeDocument();
-  }
-  offscreenReady = false;
-}
-
-// ── Keyboard Shortcuts ───────────────────────────────────────────────
 chrome.commands.onCommand.addListener(async (command) => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
-  await ensure(tab.id);
+  if (!(await ensureContentScript(tab.id))) return;
 
   if (command === "toggle-voice") {
     chrome.tabs.sendMessage(tab.id, { type: "toggle" });
@@ -49,136 +24,61 @@ chrome.commands.onCommand.addListener(async (command) => {
   }
 });
 
-// ── Message Routing ──────────────────────────────────────────────────
-const VALID_POPUP = ["inject-and-toggle", "inject-and-status"];
-const VALID_CONTENT = ["state-update", "start-voice", "stop-voice", "set-sensitivity"];
-const VALID_OFFSCREEN = ["vad-status", "vad-speech-start", "vad-speech-end", "vad-transcript"];
+// Message routing ────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
-  if (sender.id !== chrome.runtime.id) return;
   if (!msg || typeof msg.type !== "string") return;
+  if (sender.id !== chrome.runtime.id) return;
 
-  // Messages from popup
-  if (VALID_POPUP.includes(msg.type)) {
-    handlePopupMessage(msg, respond);
-    return true;
-  }
+  switch (msg.type) {
+    case "popup-status": {
+      (async () => {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab?.id) { respond({ injected: false }); return; }
+        const ok = await ensureContentScript(tab.id);
+        if (!ok) { respond({ injected: false }); return; }
+        chrome.tabs.sendMessage(tab.id, { type: "status" }, (r) => {
+          if (chrome.runtime.lastError) respond({ injected: false });
+          else respond({ ...r, injected: true });
+        });
+      })();
+      return true;
+    }
 
-  // Mic permission granted from permission page
-  if (msg.type === "mic-permission-granted") {
-    return false;
-  }
-
-  // Messages from content script → forward to offscreen or handle locally
-  if (VALID_CONTENT.includes(msg.type)) {
-    handleContentMessage(msg, sender, respond);
-    return true;
-  }
-
-  // Messages from offscreen → forward to active tab's content script
-  if (VALID_OFFSCREEN.includes(msg.type)) {
-    handleOffscreenMessage(msg);
-    return false;
+    case "state-update": {
+      const id = sender.tab?.id;
+      if (!id) return false;
+      if (msg.loopActive) {
+        chrome.action.setBadgeText({ text: "L", tabId: id });
+        chrome.action.setBadgeBackgroundColor({ color: "#F59E42", tabId: id });
+      } else if (msg.listening) {
+        chrome.action.setBadgeText({ text: "ON", tabId: id });
+        chrome.action.setBadgeBackgroundColor({ color: "#4ADE80", tabId: id });
+      } else {
+        chrome.action.setBadgeText({ text: "", tabId: id });
+      }
+      return false;
+    }
   }
 });
 
-async function handlePopupMessage(msg, respond) {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) return respond({ listening: false, loopActive: false, injected: false });
+// Content script ensure / ping ───────────────────────────────────────
+
+async function ensureContentScript(tabId) {
+  if (await ping(tabId)) return true;
   try {
-    await ensure(tab.id);
-    const action = msg.type === "inject-and-toggle" ? "toggle" : "status";
-    chrome.tabs.sendMessage(tab.id, { type: action }, (r) => {
-      if (chrome.runtime.lastError) {
-        respond({ listening: false, loopActive: false, injected: false });
-      } else {
-        respond({ ...r, injected: true });
-      }
-    });
-  } catch {
-    respond({ listening: false, loopActive: false, injected: false });
-  }
-}
-
-async function handleContentMessage(msg, sender, respond) {
-  // Badge updates
-  if (msg.type === "state-update" && sender.tab) {
-    const id = sender.tab.id;
-    if (msg.loopActive) {
-      chrome.action.setBadgeText({ text: "⟳", tabId: id });
-      chrome.action.setBadgeBackgroundColor({ color: "#F59E42", tabId: id });
-    } else if (msg.listening) {
-      chrome.action.setBadgeText({ text: "●", tabId: id });
-      chrome.action.setBadgeBackgroundColor({ color: "#4ADE80", tabId: id });
-    } else {
-      chrome.action.setBadgeText({ text: "", tabId: id });
-    }
-    return;
-  }
-
-  // Start voice pipeline → ensure offscreen, then forward
-  if (msg.type === "start-voice") {
-    try {
-      await ensureOffscreen();
-      chrome.runtime.sendMessage({ type: "start-pipeline" }, () => {
-        if (chrome.runtime.lastError) { /* offscreen may still be loading */ }
-      });
-      respond({ ok: true });
-    } catch (err) {
-      respond({ ok: false, error: err.message });
-    }
-    return;
-  }
-
-  // Stop voice pipeline → forward to offscreen, optionally close it
-  if (msg.type === "stop-voice") {
-    chrome.runtime.sendMessage({ type: "stop-pipeline" });
-    respond({ ok: true });
-    return;
-  }
-
-  // Sensitivity change → forward to offscreen
-  if (msg.type === "set-sensitivity") {
-    chrome.runtime.sendMessage({ type: "set-sensitivity", threshold: msg.threshold });
-    respond({ ok: true });
-    return;
-  }
-}
-
-async function handleOffscreenMessage(msg) {
-  // Mic permission needed — open the one-time permission page
-  if (msg.type === "vad-status" && msg.status === "error" &&
-      typeof msg.message === "string" && msg.message.includes("Mic")) {
-    chrome.tabs.create({ url: "mic-permission.html" });
-  }
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) return;
-
-  // Forward VAD events to the content script
-  chrome.tabs.sendMessage(tab.id, msg, () => {
-    if (chrome.runtime.lastError) { /* tab may have closed */ }
-  });
-}
-
-// ── On-demand content script injection ───────────────────────────────
-async function ensure(tabId) {
-  if (injected.has(tabId)) return;
-  try {
-    await new Promise((ok, fail) => {
-      chrome.tabs.sendMessage(tabId, { type: "ping" }, (r) => {
-        chrome.runtime.lastError ? fail() : ok(r);
-      });
-    });
-    injected.add(tabId);
-  } catch {
     await chrome.scripting.insertCSS({ target: { tabId }, files: ["overlay.css"] });
     await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
-    injected.add(tabId);
-  }
+    return true;
+  } catch { return false; }
 }
 
-chrome.tabs.onRemoved.addListener((id) => injected.delete(id));
-chrome.tabs.onUpdated.addListener((id, info) => {
-  if (info.status === "loading") injected.delete(id);
-});
+function ping(tabId) {
+  return new Promise((resolve) => {
+    try {
+      chrome.tabs.sendMessage(tabId, { type: "ping" }, () => {
+        resolve(!chrome.runtime.lastError);
+      });
+    } catch { resolve(false); }
+  });
+}
