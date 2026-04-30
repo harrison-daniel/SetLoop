@@ -1,7 +1,9 @@
 const fs = require("fs");
 const path = require("path");
 
-const DIST = path.join(__dirname, "dist");
+const ROOT = __dirname;
+const DIST = path.join(ROOT, "dist");
+const SITE = path.join(ROOT, "site");
 
 function copyDir(src, dest, skip = () => false) {
   fs.mkdirSync(dest, { recursive: true });
@@ -19,7 +21,7 @@ function copy(src, dest) {
   fs.copyFileSync(src, dest);
 }
 
-function build() {
+function buildExtension() {
   fs.rmSync(DIST, { recursive: true, force: true });
   fs.mkdirSync(DIST, { recursive: true });
 
@@ -27,8 +29,7 @@ function build() {
     "manifest.json",
     "background.js", "content.js", "popup.js",
     "onboarding-mic.js",
-    "popup.html",
-    "onboarding.html", "privacy.html", "index.html",
+    "popup.html", "onboarding.html", "privacy.html",
     "overlay.css",
   ];
   for (const f of staticFiles) {
@@ -50,9 +51,19 @@ function build() {
     copyDir("icons", path.join(DIST, "icons"),
       (name) => name === "generate.html" || name === "setloop-icon.png");
   }
+}
 
-  const size = dirSize(DIST);
-  console.log(`Built to dist/ (${(size / 1024).toFixed(0)} KB)`);
+// Mirror privacy.html and icons into site/ so Cloudflare Pages serves
+// /privacy and the favicon/OG image straight from one source of truth.
+function buildSite() {
+  if (!fs.existsSync(SITE)) return;
+  if (fs.existsSync("privacy.html")) {
+    copy("privacy.html", path.join(SITE, "privacy", "index.html"));
+  }
+  if (fs.existsSync("icons")) {
+    copyDir("icons", path.join(SITE, "icons"),
+      (name) => name === "generate.html" || name === "setloop-icon.png");
+  }
 }
 
 function dirSize(dir) {
@@ -65,4 +76,6 @@ function dirSize(dir) {
   return total;
 }
 
-build();
+buildExtension();
+buildSite();
+console.log(`Built dist/ (${(dirSize(DIST) / 1024).toFixed(0)} KB) and synced site/`);

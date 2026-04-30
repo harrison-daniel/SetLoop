@@ -52,4 +52,4 @@ Full source code is available at [github.com/harrison-daniel/SetLoop](https://gi
 
 ## Contact
 
-Questions? Open an issue at [github.com/harrison-daniel/SetLoop/issues](https://github.com/harrison-daniel/SetLoop/issues).
+Questions? Email [setloop.app@gmail.com](mailto:setloop.app@gmail.com) or open an issue at [github.com/harrison-daniel/SetLoop/issues](https://github.com/harrison-daniel/SetLoop/issues).
