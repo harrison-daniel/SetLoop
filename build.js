@@ -31,7 +31,18 @@ function build() {
     "overlay.css",
   ];
   for (const f of staticFiles) {
-    if (fs.existsSync(f)) copy(f, path.join(DIST, f));
+    if (!fs.existsSync(f)) continue;
+    const dest = path.join(DIST, f);
+    if (f === "content.js") {
+      // Always ship with debug logging off regardless of source setting
+      const src = fs.readFileSync(f, "utf8").replace(
+        /const DEBUG = true;/g, "const DEBUG = false;"
+      );
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, src);
+    } else {
+      copy(f, dest);
+    }
   }
 
   if (fs.existsSync("icons")) copyDir("icons", path.join(DIST, "icons"));

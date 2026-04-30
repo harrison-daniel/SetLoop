@@ -17,7 +17,6 @@
   if (window.__vl) return;
   window.__vl = true;
 
-  // Flip to false for Chrome Web Store builds.
   const DEBUG = true;
   const log = (...a) => { if (DEBUG) console.log("[SetLoop]", ...a); };
 
@@ -177,68 +176,6 @@
       o.stop(audioCtx.currentTime + dur);
     } catch {}
   }
-
-  // ── Mic monitor (lightweight energy VAD) ─────────────────────────────
-  //
-  // Opens a second getUserMedia stream with Chrome's browser-level audio
-  // processing (echoCancellation, noiseSuppression, autoGainControl).
-  // These are Chrome-layer hints — zero OS settings are changed, nothing
-  // bleeds into Zoom / Teams / Windows defaults.
-  //
-  // An AnalyserNode measures RMS energy at each onspeechstart. Close-mic
-  // user voice has a higher energy than video-audio bleed from speakers.
-  // When onset energy is below floor × MM_GATE, the SR result is treated
-  // as strict-mode regardless of the user's strict setting — i.e. it still
-  // fires if the user said "loop stop", but not raw "stop" from a tutorial.
-  // The monitor falls back silently if getUserMedia is denied or unavailable.
-
-  let mmCtx = null, mmStream = null, mmAnalyser = null, mmBuf = null;
-  let mmFloor = 0.004;   // auto-calibrating noise floor (typical quiet room)
-  let mmSpeakLevel = 0;  // RMS captured at last onspeechstart
-  let mmFloorTmr = null;
-  const MM_GATE = 3;     // onset must be > floor × gate to count as user voice
-
-  async function mmStart() {
-    if (mmStream) return;
-    try {
-      mmStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 }
-      });
-      mmCtx = new AudioContext();
-      const src = mmCtx.createMediaStreamSource(mmStream);
-      mmAnalyser = mmCtx.createAnalyser();
-      mmAnalyser.fftSize = 256;
-      mmAnalyser.smoothingTimeConstant = 0.7;
-      src.connect(mmAnalyser);
-      mmBuf = new Float32Array(mmAnalyser.fftSize);
-      // Calibrate noise floor: only update when signal is near current floor
-      // so speech bursts don't inflate it.
-      mmFloorTmr = setInterval(() => {
-        const r = mmRms(); if (!r) return;
-        if (r < mmFloor * 2.5) mmFloor = mmFloor * 0.997 + r * 0.003;
-      }, 80);
-      log("mic monitor on, floor≈", mmFloor.toFixed(4));
-    } catch { mmStream = null; }
-  }
-
-  function mmStop() {
-    clearInterval(mmFloorTmr); mmFloorTmr = null;
-    if (mmStream) { mmStream.getTracks().forEach(t => t.stop()); mmStream = null; }
-    if (mmCtx) { mmCtx.close().catch(() => {}); mmCtx = null; }
-    mmAnalyser = null; mmBuf = null;
-  }
-
-  function mmRms() {
-    if (!mmAnalyser || !mmBuf) return 0;
-    mmAnalyser.getFloatTimeDomainData(mmBuf);
-    let s = 0; for (let i = 0; i < mmBuf.length; i++) s += mmBuf[i] * mmBuf[i];
-    return Math.sqrt(s / mmBuf.length);
-  }
-
-  function mmSnapshot() { mmSpeakLevel = mmRms(); }
-
-  // Returns false only when monitor is running AND onset looks like bleed.
-  function mmIsUserVoice() { return !mmStream || mmSpeakLevel >= mmFloor * MM_GATE; }
 
   // ── Bookmarks ─────────────────────────────────────────────────────────
 
@@ -860,11 +797,11 @@
 
   const INTERIM_EAGER = new Set([
     "stop", "mic_off", "pause", "play", "bookmark", "copy",
-    "nudge", "adjust", "ramp",
-    // mark_start / mark_end intentionally absent: a 2-3 word video-audio
-    // interim ("Mark Stark", "loop mark and") fires before the full sentence
-    // arrives and gets word-count-rejected. Waiting for the final costs ~0.3s
-    // but eliminates those false positives entirely.
+    "nudge", "ramp",
+    // "adjust" removed: "loop wider 10" gives interim "loop wider" (fires -2s)
+    // then final "loop wider 10" (fires -10s) = -12s total. Not in INTERIM_EAGER
+    // means we wait for the full final so the amount is always correct.
+    // mark_start/mark_end also absent — same interim false-fire risk.
   ]);
 
   function cmdSignature(cmd) {
@@ -919,17 +856,8 @@
 
   function handleResult(text, isFinal, confidence) {
     if (isFinal) {
-      // Mic-monitor gate: if onset energy looks like video bleed (not user
-      // voice), temporarily force strict mode so bare commands ("stop",
-      // "pause") don't fire — only "loop stop" / loop-prefixed form will.
-      const userVoice = mmIsUserVoice();
-      if (!userVoice) log("mm-gate: low onset level — forcing strict for:", text);
-      const prevStrict = state.strict;
-      if (!userVoice) state.strict = true;
-
-      log("final:", text, "conf=", confidence, mmStream ? `mm=${mmSpeakLevel.toFixed(3)}/${(mmFloor * MM_GATE).toFixed(3)}` : "");
+      log("final:", text, "conf=", confidence);
       const fired = tryFire(text, confidence, true);
-      state.strict = prevStrict; // always restore
 
       if (!fired && overlay) {
         state.speechStartTime = null;
@@ -1021,7 +949,6 @@
     r.onspeechstart = () => {
       if (myGen !== recogGen) return;
       state.speaking = true;
-      mmSnapshot(); // capture mic level at speech onset for energy gate
       const v = getVideo();
       state.speechStartTime = v ? Math.max(0, v.currentTime - 0.3) : null;
       if (overlay) {
@@ -1075,7 +1002,6 @@
     state.listening = true;
     setStatus("Starting…", "paused");
     syncState();
-    mmStart(); // browser-level noise processing; silent fail if denied
     if (state.mode !== "ptt") startSR();
     else setStatus("Hold ` to speak", "paused");
     if (state.duck) duckVideo();
@@ -1096,7 +1022,6 @@
     state.listening = false;
     state.pttHeld = false;
     stopSR();
-    mmStop();
     if (healthTimer) { clearInterval(healthTimer); healthTimer = null; }
     lastInterim = "";
     restoreVideo();
@@ -1164,9 +1089,13 @@
     setStatus("Hold ` to speak", state.loop.active ? "loop" : "idle");
   });
 
-  // Visibility: only touch the label, don't cycle recognition.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
+    // If SR stalled while the tab was hidden (DevTools, tab switch, etc.), restart it.
+    if (state.listening && !recogActive && state.mode !== "ptt") {
+      log("visibility restore — restarting stalled SR");
+      startSR();
+    }
     if (!overlay) return;
     if (state.loop.active) setStatus(loopLabel(), "loop");
     else if (state.listening) setStatus(state.mode === "ptt" ? "Hold ` to speak" : "Listening",
