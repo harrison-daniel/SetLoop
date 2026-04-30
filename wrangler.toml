@@ -1,0 +1,8 @@
+name = "setloop"
+compatibility_date = "2026-01-01"
+
+# Static-only site. Cloudflare uploads everything in ./site as edge assets
+# and serves directory index files automatically (e.g. /privacy → site/privacy/index.html).
+[assets]
+directory = "./site"
+not_found_handling = "404-page"
