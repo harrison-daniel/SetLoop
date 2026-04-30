@@ -4,6 +4,11 @@
   "private": true,
   "description": "Voice-controlled video looping for Chrome. Practice any section of any tutorial hands-free.",
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.87.0"
   }
 }
