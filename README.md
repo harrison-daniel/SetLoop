@@ -1,5 +1,7 @@
 # SetLoop
 
+[![build](https://github.com/harrison-daniel/SetLoop/actions/workflows/build.yml/badge.svg)](https://github.com/harrison-daniel/SetLoop/actions/workflows/build.yml)
+
 Voice-controlled video looping for Chrome. Practice any section of any tutorial hands-free.
 
 Say **"loop last 30 at 75"** — loops the last 30 seconds at 75% speed. Say **"loop stop"** when done.
@@ -74,6 +76,23 @@ node build.js
 ```
 
 Output in `dist/`. Load that folder as an unpacked extension.
+
+## Repo layout
+
+```
+SetLoop/
+├── manifest.json, *.js, *.html, *.css   ← extension source
+├── build.js                              ← build script (zero deps)
+├── icons/                                ← extension + website icons
+├── site/                                 ← Cloudflare Pages root (setloop.app)
+│   ├── index.html                        ← landing page
+│   ├── privacy/index.html                ← auto-mirrored from root privacy.html
+│   └── icons/                            ← auto-mirrored from root icons/
+├── dist/                                 ← extension build output (gitignored)
+└── .github/workflows/build.yml           ← CI: builds extension on every push
+```
+
+`build.js` produces `dist/` for the Chrome Web Store and syncs `privacy.html` + `icons/` into `site/` so `setloop.app/privacy` always matches the in-extension privacy page.
 
 ## License
 
