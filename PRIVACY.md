@@ -4,19 +4,13 @@
 
 ## Summary
 
-SetLoop does not create accounts, run analytics, or operate any servers. Voice commands are transcribed by Chrome's built-in speech service (Google) while the mic is active. Bookmarks and preferences stay on your device.
+SetLoop does not create accounts, run analytics, or operate any servers. Voice commands are transcribed by Chrome's built-in speech service while the mic is active. Bookmarks and preferences stay on your device.
 
 ## Microphone
 
 - Your mic activates only when you explicitly enable voice control (Alt+V, the popup toggle, or the overlay button).
 - In Push-to-Talk mode, the mic is only active while you hold the key.
 - The mic is released the moment you turn voice control off.
-
-## Voice detection (local)
-
-- SetLoop runs [Silero VAD](https://github.com/snakers4/silero-vad), a small neural voice-activity-detection model, locally in your browser via ONNX Runtime Web.
-- The model is bundled with the extension (~2 MB). No data, audio, or inference output ever leaves your device.
-- Silero's job is to decide whether the mic is currently picking up a human voice (vs. video audio bleeding through laptop speakers). SetLoop only acts on commands while Silero says "yes, close-mic voice."
 
 ## Speech recognition
 
@@ -45,7 +39,6 @@ SetLoop does not create accounts, run analytics, or operate any servers. Voice c
 | `activeTab` | Access the current tab when you activate SetLoop |
 | `storage` | Save bookmarks and preferences locally on your device |
 | `scripting` | Inject the overlay/control script on the current tab |
-| `offscreen` | Run the local voice-detection model and speech API in a background document |
 
 No host permissions are declared.
 
