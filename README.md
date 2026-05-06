@@ -77,6 +77,16 @@ node build.js
 
 Output in `dist/`. Load that folder as an unpacked extension.
 
+### Development workflow
+
+For local development, load the **repo root** (not `dist/`) as the unpacked extension. The source has `DEBUG = true`, so console logs (`[SetLoop] …`) appear in DevTools — invaluable for diagnosing SR lifecycle issues. Only load one copy of the extension at a time (root OR dist, never both).
+
+```
+chrome://extensions → Load unpacked → select repo root
+```
+
+`build.js` strips `DEBUG` to `false` when producing `dist/` for shipping. Never ship the root folder; always ship `dist/`.
+
 ## Repo layout
 
 ```

@@ -4,6 +4,7 @@ const path = require("path");
 const ROOT = __dirname;
 const DIST = path.join(ROOT, "dist");
 const SITE = path.join(ROOT, "site");
+const DEV  = process.argv.includes("--dev"); // node build.js --dev → keeps DEBUG=true
 
 function copyDir(src, dest, skip = () => false) {
   fs.mkdirSync(dest, { recursive: true });
@@ -36,10 +37,9 @@ function buildExtension() {
     if (!fs.existsSync(f)) continue;
     const dest = path.join(DIST, f);
     if (f === "content.js") {
-      // Always ship with debug logging off regardless of source setting
-      const src = fs.readFileSync(f, "utf8").replace(
-        /const DEBUG = true;/g, "const DEBUG = false;"
-      );
+      // Strip debug logging unless --dev flag is passed
+      const raw = fs.readFileSync(f, "utf8");
+      const src = DEV ? raw : raw.replace(/const DEBUG = true;/g, "const DEBUG = false;");
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, src);
     } else {
@@ -78,4 +78,4 @@ function dirSize(dir) {
 
 buildExtension();
 buildSite();
-console.log(`Built dist/ (${(dirSize(DIST) / 1024).toFixed(0)} KB) and synced site/`);
+console.log(`Built dist/ (${(dirSize(DIST) / 1024).toFixed(0)} KB) and synced site/ [${DEV ? "DEV — debug ON" : "PROD — debug OFF"}]`);
