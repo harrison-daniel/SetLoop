@@ -30,7 +30,12 @@
 
   const TOAST_MS = 2200;
   const RAMP_STEP = 0.05;
-  const FIRE_DEDUP_MS = 6000;   // wide enough to cover interim → recycle → final
+  // Dedup window: blocks the same command signature from firing twice within this period.
+  // Only meaningful for continuous-mode finals (no SR restart) where the same phrase
+  // could theoretically deliver two identical results. For interim-eager commands the
+  // gen-check already handles dedup after restart, so the window only needs to cover
+  // ~700ms (min time between two real spoken commands). 1000ms gives a 300ms buffer.
+  const FIRE_DEDUP_MS = 1000;
   const STABLE_INTERIM_MS = 300; // parameterized cmd must persist this long to fire on interim
   const DUCK_RATIO = 0.25;      // video volume while listening (if auto-duck on)
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -272,13 +277,18 @@
       <div class="vl-tl" id="vlTl" hidden>
         <div class="vl-tl-track" id="vlTlTrack">
           <div class="vl-tl-loop" id="vlTlLoop"></div>
-          <div class="vl-tl-h vl-tl-hs" id="vlTlHs" title="Drag to move loop start"></div>
-          <div class="vl-tl-h vl-tl-he" id="vlTlHe" title="Drag to move loop end"></div>
+          <div class="vl-tl-h vl-tl-hs" id="vlTlHs" title="Drag to adjust loop start"></div>
+          <div class="vl-tl-h vl-tl-he" id="vlTlHe" title="Drag to adjust loop end"></div>
           <div class="vl-tl-head" id="vlTlHead"></div>
         </div>
         <div class="vl-tl-labels">
           <span id="vlTlLs"></span>
+          <button class="vl-tl-zoom" id="vlTlZoom" title="Cycle zoom: auto → close → full video">auto</button>
           <span id="vlTlLe"></span>
+        </div>
+        <div class="vl-tl-ctx">
+          <span id="vlTlWs"></span>
+          <span id="vlTlWe"></span>
         </div>
       </div>
       <div class="vl-tip" id="vlTip" hidden>
@@ -758,6 +768,7 @@
     switch (cmd.a) {
       case "loop_last": {
         stopLoop(v, false);
+        lastFired = { sig: null, at: 0 }; // reset dedup so adjust/stop/restart flows are immediate
         state.loop.start = Math.max(0, refTime - cmd.secs);
         state.loop.end = refTime;
         state.loop.ramp = !!cmd.ramp;
@@ -878,12 +889,31 @@
     state.loop.count = 0;
     v.currentTime = state.loop.start;
     if (v.paused) v.play().catch(() => {});
+    tlZoomLevel = 0;
     showTimeline();
     syncState();
 
+    let adWasPlaying = false; // tracks ad→content transition for loop restore
+
     const check = () => {
       if (!state.loop.active) return;
-      if (isAdPlaying()) return;
+      const adNow = isAdPlaying();
+      if (adNow) {
+        adWasPlaying = true;
+        return;
+      }
+      if (adWasPlaying) {
+        // Ad just ended — restore loop immediately regardless of where YouTube
+        // left the playhead. Give the video element one tick to settle first.
+        adWasPlaying = false;
+        setTimeout(() => {
+          if (!state.loop.active) return;
+          v.currentTime = state.loop.start;
+          if (v.paused) v.play().catch(() => {});
+          toast("Loop restored after ad");
+        }, 250);
+        return;
+      }
       updateProgress();
       updateTimeline();
       if (v.currentTime >= state.loop.end - 0.04 || v.currentTime < state.loop.start - 1) {
@@ -932,13 +962,25 @@
 
   // ── Loop Timeline ─────────────────────────────────────────────────────
 
-  // Returns the time window the timeline track represents.
-  // Zooms in around the active loop so short clips (10-30s) get wide handles.
-  // Padding = 1.5× loop duration, clamped to 10–60s either side.
+  // ── Timeline zoom ────────────────────────────────────────────────────
+  // Three levels, cycled by the "auto/close/full" button.
+  //   auto  — loop ± 1.5× duration (10–60s pad): context-aware default
+  //   close — loop ± 0.3× duration (3–10s pad):  tight for 1-3s nudges
+  //   full  — entire video:                       for repositioning
+  let tlZoomLevel = 0; // 0=auto, 1=close, 2=full
+  const TL_ZOOM_LABELS = ["auto", "close", "full"];
+
+  // Frozen window for the duration of an active drag. updateTimeline()
+  // uses this instead of recomputing, so the bar actually moves visually.
+  let _tlDragWin = null;
+
   function getTimelineWindow(v) {
     if (!state.loop.active || !v || !v.duration) return null;
+    if (tlZoomLevel === 2) return { start: 0, end: v.duration };
     const loopDur = Math.max(state.loop.end - state.loop.start, 1);
-    const pad = clamp(loopDur * 1.5, 10, 60);
+    const pad = tlZoomLevel === 1
+      ? clamp(loopDur * 0.3, 3, 10)   // close
+      : clamp(loopDur * 1.5, 10, 60); // auto
     return {
       start: Math.max(0, state.loop.start - pad),
       end: Math.min(v.duration, state.loop.end + pad),
@@ -948,8 +990,9 @@
   function updateTimeline() {
     const tl = $("#vlTl"); if (!tl || tl.hidden) return;
     const v = getVideo(); if (!v || !v.duration) return;
-    // Use zoomed window so short loops get widely-spaced handles.
-    const win = getTimelineWindow(v) || { start: 0, end: v.duration };
+    // During a drag, use the frozen window so the bar moves physically.
+    // After drag ends _tlDragWin is null and the window re-centers.
+    const win = _tlDragWin || getTimelineWindow(v) || { start: 0, end: v.duration };
     const winDur = Math.max(win.end - win.start, 0.1);
     const ls = clamp((state.loop.start - win.start) / winDur, 0, 1);
     const le = clamp((state.loop.end   - win.start) / winDur, 0, 1);
@@ -958,14 +1001,23 @@
     const hs   = $("#vlTlHs");
     const he   = $("#vlTlHe");
     const head = $("#vlTlHead");
-    const lsEl = $("#vlTlLs");
-    const leEl = $("#vlTlLe");
     if (loop) { loop.style.left = `${ls * 100}%`; loop.style.width = `${(le - ls) * 100}%`; }
     if (hs) hs.style.left = `${ls * 100}%`;
     if (he) he.style.left = `${le * 100}%`;
     if (head) head.style.left = `${ct * 100}%`;
-    if (lsEl) lsEl.textContent = fmt(state.loop.start);
-    if (leEl) leEl.textContent = fmt(state.loop.end);
+    // Loop start/end labels
+    const lsEl = $("#vlTlLs"); if (lsEl) lsEl.textContent = fmt(state.loop.start);
+    const leEl = $("#vlTlLe"); if (leEl) leEl.textContent = fmt(state.loop.end);
+    // Window context labels (very dim row below)
+    const wsEl = $("#vlTlWs"); if (wsEl) wsEl.textContent = fmt(win.start);
+    const weEl = $("#vlTlWe"); if (weEl) weEl.textContent = fmt(win.end);
+    // Zoom button label + color class
+    const zb = $("#vlTlZoom");
+    if (zb) {
+      zb.textContent = TL_ZOOM_LABELS[tlZoomLevel];
+      zb.classList.toggle("vl-tl-zoom-close", tlZoomLevel === 1);
+      zb.classList.toggle("vl-tl-zoom-full",  tlZoomLevel === 2);
+    }
   }
 
   function showTimeline() {
@@ -1002,6 +1054,7 @@
         e.stopPropagation(); e.preventDefault();
         const v = getVideo();
         const frozenWin = (v && state.loop.active) ? getTimelineWindow(v) : null;
+        _tlDragWin = frozenWin;
         const onMove = (ev) => {
           const v = getVideo(); if (!v || !v.duration) return;
           const t = timeAtX(ev.clientX, frozenWin, v);
@@ -1017,6 +1070,8 @@
         const onUp = () => {
           document.removeEventListener("mousemove", onMove);
           document.removeEventListener("mouseup", onUp);
+          _tlDragWin = null;
+          updateTimeline();
         };
         document.addEventListener("mousemove", onMove);
         document.addEventListener("mouseup", onUp);
@@ -1029,8 +1084,10 @@
       el.addEventListener("mousedown", (e) => {
         e.stopPropagation(); e.preventDefault();
         const v = getVideo(); if (!v || !v.duration) return;
-        // Freeze window and snapshot loop at drag-start.
-        const frozenWin   = state.loop.active ? getTimelineWindow(v) : null;
+        // Use full-video window during shift drag so bar travels visibly.
+        // On release _tlDragWin is cleared and the view zooms back to auto.
+        const frozenWin   = { start: 0, end: v.duration };
+        _tlDragWin = frozenWin;
         const originTime  = timeAtX(e.clientX, frozenWin, v);
         const originStart = state.loop.start;
         const dur         = state.loop.end - state.loop.start; // preserve duration
@@ -1047,6 +1104,8 @@
         const onUp = () => {
           document.removeEventListener("mousemove", onMove);
           document.removeEventListener("mouseup", onUp);
+          _tlDragWin = null;
+          updateTimeline();
         };
         document.addEventListener("mousemove", onMove);
         document.addEventListener("mouseup", onUp);
@@ -1064,6 +1123,15 @@
       const win = state.loop.active ? getTimelineWindow(v) : null;
       v.currentTime = timeAtX(e.clientX, win, v);
     });
+
+    const zoomBtn = $("#vlTlZoom");
+    if (zoomBtn) {
+      zoomBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        tlZoomLevel = (tlZoomLevel + 1) % TL_ZOOM_LABELS.length;
+        updateTimeline();
+      });
+    }
   }
 
   // ── Dual-source audio monitor (mic + video reference) ───────────────
@@ -1172,6 +1240,11 @@
   }
 
   function samplePoll() {
+    // AudioContext can enter "suspended" after tab hide or system sleep.
+    // resume() is a no-op when already running — safe to call every poll.
+    if (monitorCtx && monitorCtx.state === "suspended") {
+      monitorCtx.resume().catch(() => {});
+    }
     micRMS = rmsOf(micAnalyser);
     videoRMS = rmsOf(videoAnalyser);
 

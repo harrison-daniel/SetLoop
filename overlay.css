@@ -210,8 +210,35 @@
 .vl-tl-labels {
   display:flex;
   justify-content:space-between;
+  align-items:center;
   font-size:9.5px;
   color:rgba(255,255,255,0.3);
   font-variant-numeric:tabular-nums;
   letter-spacing:0.02em;
+}
+.vl-tl-zoom {
+  border:none;
+  background:rgba(255,255,255,0.06);
+  color:rgba(255,255,255,0.25);
+  font-family:inherit;
+  font-size:9px;
+  padding:1px 6px;
+  border-radius:3px;
+  cursor:pointer;
+  letter-spacing:0.03em;
+  transition:background 0.15s,color 0.15s;
+  flex-shrink:0;
+}
+.vl-tl-zoom:hover { background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.65); }
+.vl-tl-zoom-close { color:#F59E42 !important; background:rgba(245,158,66,0.12) !important; }
+.vl-tl-zoom-full  { color:#60A5FA !important; background:rgba(96,165,250,0.10) !important; }
+/* Window context row — dim, below labels */
+.vl-tl-ctx {
+  display:flex;
+  justify-content:space-between;
+  font-size:8.5px;
+  color:rgba(255,255,255,0.16);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:0.02em;
+  margin-top:2px;
 }
