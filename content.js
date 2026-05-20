@@ -150,6 +150,7 @@
         vl_state: {
           listening: state.listening,
           loopActive: state.loop.active,
+          overlayActive: overlayVisible,
           mode: state.mode,
         },
       });
@@ -241,10 +242,22 @@
   function addBm() {
     const v = getVideo(); if (!v) return;
     const t = v.currentTime;
-    state.bookmarks.push({
-      id: Date.now(), time: t, label: fmt(t),
+    const now = Date.now();
+    // Storage-level dedup: ignore if a bookmark within 3s already exists for this time
+    if (state.bookmarks.some(b => Math.abs(b.time - t) < 3 && (now - b.id) < 5000)) return;
+    const bm = {
+      id: now, time: t, label: fmt(t),
       speed: v.playbackRate, created: new Date().toISOString(),
-    });
+      videoId: state.videoId,
+      videoUrl: location.href,
+      videoTitle: document.title.replace(/ - YouTube$/, "").trim(),
+    };
+    if (state.loop.active) {
+      bm.loopStart = state.loop.start;
+      bm.loopEnd   = state.loop.end;
+      bm.ramp      = !!state.loop.ramp;
+    }
+    state.bookmarks.push(bm);
     saveBm(); beep();
     toast(`Bookmarked ${fmt(t)}`);
     showHud(`Bookmarked ${fmt(t)}`, "info");
@@ -258,11 +271,41 @@
     ).slice(0, 200);
   }
 
+  function checkPendingRestore() {
+    chrome?.storage?.local?.get("vl_pending_restore", (d) => {
+      const b = d?.vl_pending_restore;
+      if (!b || b.videoId !== state.videoId) return;
+      chrome.storage.local.remove("vl_pending_restore");
+      if (b.loopStart == null || b.loopEnd == null) return;
+      // YouTube's video element isn't in the DOM yet at script load time.
+      // Retry until the element and its duration are available (up to ~12s).
+      let attempts = 0;
+      const tryRestore = () => {
+        const v = getVideo();
+        if (!v || !v.duration) {
+          if (++attempts < 30) setTimeout(tryRestore, 400);
+          return;
+        }
+        createOverlay();
+        v.currentTime    = b.loopStart;
+        state.loop.start = b.loopStart;
+        state.loop.end   = b.loopEnd;
+        state.loop.ramp  = !!b.ramp;
+        startLoop(v, b.speed || null);
+        const l = loopLabel(); toast(l); setStatus(l, "loop");
+      };
+      setTimeout(tryRestore, 800); // initial delay for YouTube SPA to mount video
+    });
+  }
+
   // ── Overlay ───────────────────────────────────────────────────────────
 
-  let overlay = null, toastTmr = null;
+  let overlay = null, toastTmr = null, overlayDragged = false, overlayVisible = false;
   function createOverlay() {
-    if (overlay) return;
+    if (overlay) {
+      if (overlay.style.display === "none") { overlay.style.display = ""; overlayVisible = true; syncState(); }
+      return;
+    }
     overlay = document.createElement("div"); overlay.id = "vl-root";
     overlay.innerHTML = `
       <div class="vl-pill" id="vlPill">
@@ -312,6 +355,22 @@
     });
     $("#vlEdit").addEventListener("click", (e) => { e.stopPropagation(); toggleEdit(); });
     renderQA(); drag($("#vlPill"));
+    overlayVisible = true;
+    syncState();
+    setTimeout(snapOverlay, 400);
+    window.addEventListener("resize", () => { if (!overlayDragged) snapOverlay(); });
+  }
+
+  function snapOverlay() {
+    if (!overlay || overlayDragged) return;
+    const v = getVideo();
+    if (!v) return;
+    const vr = v.getBoundingClientRect();
+    if (vr.width < 10) return;
+    overlay.style.top   = `${Math.max(8, vr.top + 12)}px`;
+    overlay.style.right = `${Math.max(8, window.innerWidth - vr.right + 12)}px`;
+    overlay.style.left  = "auto";
+    posHud();
   }
 
   function renderQA() {
@@ -393,7 +452,8 @@
     if (!h) return;
     const anchor = qaRow || pill; if (!anchor) return;
     const r = anchor.getBoundingClientRect();
-    h.style.right = "12px"; h.style.left = "auto";
+    const distRight = Math.max(8, window.innerWidth - r.right);
+    h.style.right = `${distRight}px`; h.style.left = "auto";
     h.style.top = `${r.bottom + 8}px`;
   }
   function showHud(text, type, cmdWord) {
@@ -437,6 +497,7 @@
     });
     el.addEventListener("pointermove", (e) => {
       if (!d) return;
+      overlayDragged = true;
       el.style.position = "fixed";
       el.style.left = `${ox + e.clientX - sx}px`;
       el.style.top = `${oy + e.clientY - sy}px`;
@@ -678,7 +739,7 @@
     // Long-form loop commands ─────────────────────────────────────
 
     let m = t.match(/loop\s+last\s+([\w\s-]+?)\s+(?:at|and)\s+([\w\s-]+?)\s*(?:percent|%)?\s*(?:speed)?\s*(ramp(?:\s+up)?)?\s*$/);
-    if (!m) m = t.match(/loop\s+last\s+(\w+)\s*(?:(?:at|and)\s+(\w+)\s*(?:percent|%)?\s*(?:speed)?)?\s*(ramp(?:\s+up)?)?/);
+    if (!m) m = t.match(/loop\s+last\s+(\w+)\s*(?:(?:at|and|-)\s*(\w+)\s*(?:percent|%)?\s*(?:speed)?)?\s*(ramp(?:\s+up)?)?/);
     if (m) {
       const s = parseTime(m[1]);
       if (!isNaN(s) && s > 0 && s < 600) {
@@ -2111,6 +2172,10 @@
     state.videoId = getVid();
     loadBm();
     log("navigation → new videoId", state.videoId);
+    if (pageKind() === "youtube-watch") {
+      overlayDragged = false;
+      setTimeout(snapOverlay, 700);
+    }
   }, 1500);
 
   // ── Message routing ──────────────────────────────────────────────────
@@ -2118,17 +2183,20 @@
   const VALID_TYPES = new Set([
     "ping", "toggle", "status", "set-mode", "set-strict", "set-duck",
     "quick-bookmark", "get-bookmarks", "go-to-bookmark", "delete-bookmark",
+    "activate-overlay", "deactivate-overlay",
   ]);
 
   function statusResponse() {
     return {
       listening: state.listening,
       loopActive: state.loop.active,
+      overlayActive: overlayVisible,
       mode: state.mode,
       strict: state.strict,
       duck: state.duck,
       supported: isSupportedPage(),
       pageKind: pageKind(),
+      videoId: state.videoId,
     };
   }
 
@@ -2189,6 +2257,14 @@
         state.bookmarks = state.bookmarks.filter(b => b.id !== msg.id);
         saveBm(); respond({ ok: true }); break;
       }
+
+      case "activate-overlay":
+        createOverlay(); respond(statusResponse()); break;
+
+      case "deactivate-overlay":
+        if (state.listening) stopListening();
+        if (overlay) { overlay.style.display = "none"; overlayVisible = false; syncState(); }
+        respond(statusResponse()); break;
     }
   });
 
@@ -2197,11 +2273,18 @@
   // webkitSpeechRecognition.start() needs on first use.
   window.__setloop = {
     toggle: () => { toggle(); return statusResponse(); },
+    activateOverlay: () => { createOverlay(); return statusResponse(); },
+    deactivateOverlay: () => {
+      if (state.listening) stopListening();
+      if (overlay) { overlay.style.display = "none"; overlayVisible = false; syncState(); }
+      return statusResponse();
+    },
     start: () => { createOverlay(); if (!state.listening) startListening(); return statusResponse(); },
     stop: () => { if (state.listening) stopListening(); return statusResponse(); },
     status: () => statusResponse(),
   };
 
   loadBm();
+  checkPendingRestore();
   log("content script ready on", location.hostname);
 })();

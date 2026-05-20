@@ -22,6 +22,17 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/watch*",
+        "https://m.youtube.com/watch*"
+      ],
+      "js": ["content.js"],
+      "css": ["overlay.css"],
+      "run_at": "document_idle"
+    }
+  ],
   "commands": {
     "toggle-voice": {
       "suggested_key": { "default": "Alt+V" },

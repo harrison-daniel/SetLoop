@@ -72,11 +72,19 @@
   .bm-empty { font-size: 10.5px; color: var(--t3); font-style: italic; padding: 2px 0; }
   .bm-item { display: flex; align-items: center; gap: 6px; padding: 4px 0; cursor: pointer; border-radius: 4px; }
   .bm-item:hover .bm-label { color: var(--t1); }
-  .bm-time { font-family: 'DM Sans', monospace; font-size: 11px; font-weight: 600; color: var(--or); min-width: 34px; }
-  .bm-label { font-size: 11px; color: var(--t2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color 0.15s; }
-  .bm-del { width: 18px; height: 18px; border: none; background: none; color: var(--t3); cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: color 0.15s, background 0.15s; opacity: 0; font-size: 14px; line-height: 1; }
+  .bm-item-ext .bm-time { color: var(--t2); }
+  .bm-time { font-family: 'DM Sans', monospace; font-size: 11px; font-weight: 600; color: var(--or); white-space: nowrap; }
+  .bm-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .bm-label { font-size: 11px; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color 0.15s; }
+  .bm-loop { font-size: 9.5px; color: var(--or); opacity: 0.65; font-family: 'DM Sans', monospace; font-weight: 600; letter-spacing: 0.01em; }
+  .bm-edit { width: 18px; height: 18px; border: none; background: none; color: var(--t3); cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: color 0.15s, background 0.15s; opacity: 0; flex-shrink: 0; }
+  .bm-item:hover .bm-edit { opacity: 1; }
+  .bm-edit:hover { color: #60A5FA; background: rgba(96,165,250,0.1); }
+  .bm-del { width: 18px; height: 18px; border: none; background: none; color: var(--t3); cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: color 0.15s, background 0.15s; opacity: 0; font-size: 14px; line-height: 1; flex-shrink: 0; }
   .bm-item:hover .bm-del { opacity: 1; }
   .bm-del:hover { color: #F87171; background: rgba(248,113,113,0.1); }
+  .bm-note-input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; color: var(--t1); font-family: inherit; font-size: 11px; padding: 1px 5px; width: 100%; outline: none; }
+  .bm-note-input:focus { border-color: rgba(245,158,66,0.4); }
 
   .ft { padding: 8px 16px 12px; border-top: 1px solid var(--bd); }
   .ft-row { font-size: 10px; color: var(--t3); display: flex; align-items: center; gap: 3px; }
@@ -99,8 +107,8 @@
 
 <div class="tg">
   <div>
-    <div class="tg-title">Voice Control</div>
-    <div class="tg-sub">Activates microphone on this tab</div>
+    <div class="tg-title">SetLoop</div>
+    <div class="tg-sub">Show overlay and controls — mic stays off</div>
   </div>
   <label class="sw"><input type="checkbox" id="sw"><div class="sl"></div></label>
 </div>
@@ -112,7 +120,7 @@
 
 <div class="pv">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-  <p>Uses Chrome's built-in Web Speech API. Chrome handles transcription; SetLoop itself never records, stores, or forwards audio. See <a href="privacy.html" target="_blank" style="color:inherit;text-decoration:underline;">privacy</a>.</p>
+  <p>Mic is <b>off by default</b> — tap the 🎙 icon on the overlay to enable voice. Uses Chrome's built-in speech API; audio never leaves Chrome. See <a href="privacy.html" target="_blank" style="color:inherit;text-decoration:underline;">privacy</a>.</p>
 </div>
 
 <div>
@@ -143,8 +151,9 @@
 </div>
 
 <div class="sec" id="bmSec">
-  <div class="sec-t">Bookmarks</div>
+  <div class="sec-t">Bookmarks <span style="font-weight:400;opacity:0.5;text-transform:none;letter-spacing:0">— click to open loop</span></div>
   <div id="bms"><div class="bm-empty">None yet — say "bookmark" or press Alt+B</div></div>
+  <div style="font-size:9px;color:var(--t3);margin-top:5px;line-height:1.4;">Stored locally — cleared with Chrome browsing history.</div>
 </div>
 
 <div class="sec">
