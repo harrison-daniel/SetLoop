@@ -286,6 +286,7 @@
           <button class="vl-tl-zoom" id="vlTlZoom" title="Cycle zoom: auto → close → full video">auto</button>
           <span id="vlTlLe"></span>
         </div>
+        <div class="vl-tl-cmd" id="vlTlCmd"></div>
         <div class="vl-tl-ctx">
           <span id="vlTlWs"></span>
           <span id="vlTlWe"></span>
@@ -395,11 +396,18 @@
     h.style.right = "12px"; h.style.left = "auto";
     h.style.top = `${r.bottom + 8}px`;
   }
-  function showHud(text, type) {
+  function showHud(text, type, cmdWord) {
     const el = document.getElementById("vlHudText"), hud = document.getElementById("vlHud");
     if (!el || !hud) return;
     posHud();
-    el.textContent = type === "cmd" ? `✓ ${text}` : type === "interim" ? `${text}…` : text;
+    if (cmdWord) {
+      el.innerHTML =
+        `<span style="color:#4ADE80;font-weight:700">${cmdWord}</span>` +
+        ` <span style="color:#4ADE80">✓</span>` +
+        `  <span style="color:rgba(255,255,255,0.7)">${text}</span>`;
+    } else {
+      el.textContent = type === "cmd" ? `✓ ${text}` : type === "interim" ? `${text}…` : text;
+    }
     hud.className = `vl-hud vl-hud-show vl-hud-${type}`;
     clearTimeout(hud._t);
     hud._t = setTimeout(() => { hud.className = "vl-hud"; },
@@ -717,17 +725,17 @@
 
     // Adjust commands accept optional seconds: "wider 5", "trim 10", "shift back 3"
     m = cmd.match(/^wider(?:\s+(\w+))?$/);
-    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: -d, endDelta: 0 }; }
+    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: -d, endDelta: 0, label: "Wider" }; }
     m = cmd.match(/^tighter(?:\s+(\w+))?$/);
-    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: d, endDelta: 0 }; }
+    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: d, endDelta: 0, label: "Tighter" }; }
     m = cmd.match(/^trim(?:\s+(\w+))?$/);
-    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: 0, endDelta: -d }; }
+    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: 0, endDelta: -d, label: "Trim" }; }
     m = cmd.match(/^extend(?:\s+(\w+))?$/);
-    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: 0, endDelta: d }; }
+    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: 0, endDelta: d, label: "Extend" }; }
     m = cmd.match(/^shift\s+back(?:\s+(\w+))?$/);
-    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: -d, endDelta: -d }; }
+    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: -d, endDelta: -d, label: "Shift back" }; }
     m = cmd.match(/^shift\s+forward(?:\s+(\w+))?$/);
-    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: d, endDelta: d }; }
+    if (m) { const d = m[1] ? parseTime(m[1]) : 2; if (!isNaN(d) && d > 0) return { a: "adjust", startDelta: d, endDelta: d, label: "Shift fwd" }; }
 
     if (/^ramp(?:\s+on)?$/.test(cmd)) return { a: "ramp", on: true };
     if (/^ramp\s+off$/.test(cmd))     return { a: "ramp", on: false };
@@ -821,7 +829,14 @@
         state.loop.end = Math.max(state.loop.start + 1, state.loop.end + cmd.endDelta);
         v.currentTime = state.loop.start;
         const l = loopLabel();
-        toast(l); setStatus(l, "loop"); showHud(l, "cmd"); break;
+        toast(l); setStatus(l, "loop"); showHud(l, "cmd", cmd.label);
+        const cmdEl = $("#vlTlCmd");
+        if (cmdEl) {
+          clearTimeout(cmdEl._t);
+          cmdEl.textContent = `${cmd.label} ✓`;
+          cmdEl._t = setTimeout(() => { cmdEl.textContent = ""; }, 2000);
+        }
+        break;
       }
       case "ramp": {
         if (!state.loop.active) { toast("No active loop"); return; }

@@ -232,6 +232,23 @@
 .vl-tl-zoom:hover { background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.65); }
 .vl-tl-zoom-close { color:#F59E42 !important; background:rgba(245,158,66,0.12) !important; }
 .vl-tl-zoom-full  { color:#60A5FA !important; background:rgba(96,165,250,0.10) !important; }
+/* Command word flash below labels */
+.vl-tl-cmd {
+  text-align:center;
+  font-size:9px;
+  font-weight:700;
+  color:#4ADE80;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  overflow:hidden;
+  max-height:0;
+  transition:max-height 0.15s ease, margin-top 0.15s ease;
+  margin-top:0;
+}
+.vl-tl-cmd:not(:empty) {
+  max-height:14px;
+  margin-top:3px;
+}
 /* Window context row — dim, below labels */
 .vl-tl-ctx {
   display:flex;
