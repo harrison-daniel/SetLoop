@@ -14,6 +14,13 @@
 
 (() => {
   "use strict";
+  // Guard against double-injection: content_scripts auto-injects at document_idle;
+  // ensureContentScript() can also inject via executeScript if a ping arrives before
+  // the message listener is registered. The __setloop_init flag is set synchronously
+  // at the top of the IIFE — any second injection sees it and bails immediately.
+  if (window.__setloop_init) return;
+  window.__setloop_init = true;
+
   const VL_VERSION = "1.1.0";
   if (window.__vl === VL_VERSION) return;
   // If an older injection exists, tear down its overlay so the new
@@ -738,8 +745,8 @@
 
     // Long-form loop commands ─────────────────────────────────────
 
-    let m = t.match(/loop\s+last\s+([\w\s-]+?)\s+(?:at|and)\s+([\w\s-]+?)\s*(?:percent|%)?\s*(?:speed)?\s*(ramp(?:\s+up)?)?\s*$/);
-    if (!m) m = t.match(/loop\s+last\s+(\w+)\s*(?:(?:at|and|-)\s*(\w+)\s*(?:percent|%)?\s*(?:speed)?)?\s*(ramp(?:\s+up)?)?/);
+    let m = t.match(/loop\s+last\s+([\w\s-]+?)\s+(?:at|and|of)\s+([\w\s-]+?)\s*(?:percent|%)?\s*(?:speed)?\s*(ramp(?:\s+up)?)?\s*$/);
+    if (!m) m = t.match(/loop\s+last\s+(\w+)\s*(?:(?:at|and|of|-)\s*(\w+)\s*(?:percent|%)?\s*(?:speed)?)?\s*(ramp(?:\s+up)?)?/);
     if (m) {
       const s = parseTime(m[1]);
       if (!isNaN(s) && s > 0 && s < 600) {
@@ -1688,6 +1695,17 @@
   function tryFire(text, confidence, isFinal) {
     let cmd;
     try { cmd = parse(text); } catch (e) { log("parse threw:", e.message); cmd = null; }
+    // Tail fallback: SR often prefixes video audio before the user's command in
+    // longer transcriptions. When the full string fails, try the last 6 words —
+    // short enough for phoneticRewrite to run ("Luke" → "loop", etc.).
+    if (!cmd) {
+      const words = text.trim().split(/\s+/);
+      if (words.length > 6) {
+        const tail = words.slice(-6).join(" ");
+        try { cmd = parse(tail); } catch {}
+        if (cmd) log("tail-parse matched:", tail, "→", cmd);
+      }
+    }
     if (!cmd) return false;
 
     const sig = cmdSignature(cmd);
