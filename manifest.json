@@ -6,11 +6,7 @@
   "minimum_chrome_version": "120",
   "description": "Voice-controlled video looping for musicians. Say 'loop last 30 at 50' to practice any section hands-free.",
   "homepage_url": "https://setloop.app",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "scripting"
-  ],
+  "permissions": ["activeTab", "storage", "scripting"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
