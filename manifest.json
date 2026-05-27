@@ -4,7 +4,7 @@
   "short_name": "SetLoop",
   "version": "1.0.0",
   "minimum_chrome_version": "120",
-  "description": "Voice-controlled video looping for Chrome. Loop any section, adjust speed, and bookmark moments hands-free — or use customizable on-screen controls with preset loop buttons for precise tuning.",
+  "description": "Voice-controlled Chrome video looping. Loop sections, adjust speed, and bookmark moments hands-free or with presets.",
   "homepage_url": "https://setloop.app",
   "permissions": ["activeTab", "storage", "scripting"],
   "action": {
