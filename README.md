@@ -2,32 +2,33 @@
 
 [![build](https://github.com/harrison-daniel/SetLoop/actions/workflows/build.yml/badge.svg)](https://github.com/harrison-daniel/SetLoop/actions/workflows/build.yml)
 
-Voice-controlled video looping for Chrome. Practice any section of any tutorial hands-free.
+Voice-controlled video looping for Chrome. Loop any section, adjust speed, and bookmark moments hands-free — or use customizable on-screen controls with preset loop buttons for precise tuning.
 
 Say **"loop last 30 at 75"** — loops the last 30 seconds at 75% speed. Say **"loop stop"** when done.
 
 ## Install
 
-[Chrome Web Store →](#) *(link when published)*
+[Chrome Web Store →](#) _(link when published)_
 
 Or load unpacked:
+
 1. Clone this repo and run `node build.js`
 2. Open `chrome://extensions`, toggle Developer mode
 3. Click **Load unpacked** and select the `dist/` folder
 
 ## Commands
 
-| Command | What it does |
-|---|---|
-| `loop last 30 at 75` | Loop the last 30s at 75% speed |
+| Command                   | What it does                           |
+| ------------------------- | -------------------------------------- |
+| `loop last 30 at 75`      | Loop the last 30s at 75% speed         |
 | `loop last 20 at 50 ramp` | Start at 50%, increase speed each loop |
-| `loop stop` | End the loop, restore speed |
-| `wider` / `tighter` | Adjust the loop start ±2s |
-| `slower` / `faster` | Adjust speed ±25% |
-| `speed 63` | Set an exact speed (any %) |
-| `back 10` / `forward 10` | Skip seconds |
-| `bookmark` | Save the current timestamp |
-| `mic off` | Turn off the microphone |
+| `loop stop`               | End the loop, restore speed            |
+| `wider` / `tighter`       | Adjust the loop start ±2s              |
+| `slower` / `faster`       | Adjust speed ±25%                      |
+| `speed 63`                | Set an exact speed (any %)             |
+| `back 10` / `forward 10`  | Skip seconds                           |
+| `bookmark`                | Save the current timestamp             |
+| `mic off`                 | Turn off the microphone                |
 
 Tip: prefix short commands with "loop" (`loop stop`, `loop slower`) in Always-On mode so ambient speech from the video doesn't trigger actions.
 
@@ -38,10 +39,10 @@ Tip: prefix short commands with "loop" (`loop stop`, `loop slower`) in Always-On
 
 ## Keyboard shortcuts
 
-| Shortcut | Action |
-|---|---|
-| `Alt+V` | Toggle voice on/off |
-| `Alt+B` | Bookmark the current time |
+| Shortcut     | Action                          |
+| ------------ | ------------------------------- |
+| `Alt+V`      | Toggle voice on/off             |
+| `Alt+B`      | Bookmark the current time       |
 | Hold `` ` `` | Push-to-Talk (when in PTT mode) |
 
 ## Privacy
@@ -56,10 +57,10 @@ Full policy: [PRIVACY.md](./PRIVACY.md)
 
 ## Permissions
 
-| Permission | Why |
-|---|---|
-| `activeTab` | Access the current tab when you activate SetLoop |
-| `storage` | Save bookmarks and preferences locally |
+| Permission  | Why                                                  |
+| ----------- | ---------------------------------------------------- |
+| `activeTab` | Access the current tab when you activate SetLoop     |
+| `storage`   | Save bookmarks and preferences locally               |
 | `scripting` | Inject the overlay/control script on the current tab |
 
 ## Tech
