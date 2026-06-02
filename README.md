@@ -8,7 +8,7 @@ Say **"loop last 30 at 75"** — loops the last 30 seconds at 75% speed. Say **"
 
 ## Install
 
-[Chrome Web Store →](#) _(link when published)_
+[Chrome Web Store →](https://chromewebstore.google.com/detail/setloop/blbfpomkgdbhmcfnfpfaogncjacebdhp)
 
 Or load unpacked:
 
