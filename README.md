@@ -1,22 +1,38 @@
+<div align="center">
+
+<img src="icons/icon128.png" width="72" alt="SetLoop icon" />
+
 # SetLoop
 
-[![build](https://github.com/harrison-daniel/SetLoop/actions/workflows/build.yml/badge.svg)](https://github.com/harrison-daniel/SetLoop/actions/workflows/build.yml)
+**Voice-controlled video looping for Chrome.**
 
-Voice-controlled video looping for Chrome. Loop any section, adjust speed, and bookmark moments hands-free — or use customizable on-screen controls with preset loop buttons for precise tuning.
+Loop any section, adjust speed, and bookmark moments hands-free — or use the draggable loop bar and customizable presets for precise control with your mouse.
 
-Say **"loop last 30 at 75"** — loops the last 30 seconds at 75% speed. Say **"loop stop"** when done.
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Install-f59e42?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/setloop/blbfpomkgdbhmcfnfpfaogncjacebdhp)
+&nbsp;[![Website](https://img.shields.io/badge/Website-setloop.app-f59e42)](https://setloop.app)
+&nbsp;[![License](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg)](./LICENSE)
+
+<br>
+
+<img src="docs/demo.gif" width="720" alt="SetLoop demo: speaking a command to loop a video section" />
+
+</div>
+
+---
+
+Say **"loop last 30 at 75"** — and SetLoop loops the last 30 seconds at 75% speed. Say **"loop stop"** when you're done. Works on any site with HTML5 video — YouTube, Vimeo, Coursera, and more. Perfect for any tutorial videos.
 
 ## Install
 
-[Chrome Web Store →](https://chromewebstore.google.com/detail/setloop/blbfpomkgdbhmcfnfpfaogncjacebdhp)
+**[Add to Chrome →](https://chromewebstore.google.com/detail/setloop/blbfpomkgdbhmcfnfpfaogncjacebdhp)**
 
 Or load unpacked:
 
 1. Clone this repo and run `node build.js`
-2. Open `chrome://extensions`, toggle Developer mode
+2. Open `chrome://extensions` and toggle on **Developer mode**
 3. Click **Load unpacked** and select the `dist/` folder
 
-## Commands
+## Voice commands
 
 | Command                   | What it does                           |
 | ------------------------- | -------------------------------------- |
@@ -30,11 +46,11 @@ Or load unpacked:
 | `bookmark`                | Save the current timestamp             |
 | `mic off`                 | Turn off the microphone                |
 
-Tip: prefix short commands with "loop" (`loop stop`, `loop slower`) in Always-On mode so ambient speech from the video doesn't trigger actions.
+> **Strict parsing (on by default):** commands require a `loop` prefix — say `loop stop`, `loop slower` — so ambient speech from the video can't trigger actions by accident. Turn it off in the popup to use bare commands like `stop` and `slower`. Or use **Push-to-Talk** (hold `` ` ``), which never misfires.
 
 ## Modes
 
-- **Always On** — mic stays on, speak commands anytime
+- **Always On** — mic stays on; speak commands anytime.
 - **Push-to-Talk** — hold the `` ` `` key, speak, release. Most reliable in noisy rooms.
 
 ## Keyboard shortcuts
@@ -47,7 +63,7 @@ Tip: prefix short commands with "loop" (`loop stop`, `loop slower`) in Always-On
 
 ## Privacy
 
-SetLoop uses Chrome's built-in `SpeechRecognition` API. While the mic is active, Chrome transmits audio to Google's speech service and returns a transcript. SetLoop reads the transcript, matches a command, and acts — it does not store or forward the audio itself.
+SetLoop uses Chrome's built-in `SpeechRecognition` API. While the mic is active, Chrome transmits audio to Google's speech service and returns a transcript. SetLoop reads that transcript, matches a command, and acts — it never stores or forwards the audio itself.
 
 - No accounts, analytics, tracking, or telemetry
 - No host permissions
@@ -63,12 +79,11 @@ Full policy: [PRIVACY.md](./PRIVACY.md)
 | `storage`   | Save bookmarks and preferences locally               |
 | `scripting` | Inject the overlay/control script on the current tab |
 
-## Tech
+## How it works
 
-- Manifest V3
-- Zero runtime dependencies, no build-time compilation, vanilla JS
+- **Manifest V3**, zero runtime dependencies, no build-time compilation — vanilla JS
 - CSP: `script-src 'self'; object-src 'self'`
-- `SpeechRecognition` runs in the content script (page origin) so user-gesture propagation is clean and mic permission follows the standard per-site prompt
+- `SpeechRecognition` runs in the content script (page origin), so user-gesture propagation is clean and mic permission follows the standard per-site prompt
 
 ## Build
 
@@ -76,17 +91,22 @@ Full policy: [PRIVACY.md](./PRIVACY.md)
 node build.js
 ```
 
-Output in `dist/`. Load that folder as an unpacked extension.
+Output lands in `dist/`. Load that folder as an unpacked extension.
 
-### Development workflow
+<details>
+<summary><b>Development workflow</b></summary>
 
-For local development, load the **repo root** (not `dist/`) as the unpacked extension. The source has `DEBUG = true`, so console logs (`[SetLoop] …`) appear in DevTools — invaluable for diagnosing SR lifecycle issues. Only load one copy of the extension at a time (root OR dist, never both).
+<br>
+
+For local development, load the **repo root** (not `dist/`) as the unpacked extension. The source has `DEBUG = true`, so console logs (`[SetLoop] …`) appear in DevTools — invaluable for diagnosing SpeechRecognition lifecycle issues. Only load one copy at a time (root **or** dist, never both).
 
 ```
 chrome://extensions → Load unpacked → select repo root
 ```
 
-`build.js` strips `DEBUG` to `false` when producing `dist/` for shipping. Never ship the root folder; always ship `dist/`.
+`build.js` strips `DEBUG` to `false` when producing `dist/` for shipping. **Never ship the root folder; always ship `dist/`.**
+
+</details>
 
 ## Repo layout
 
@@ -95,6 +115,7 @@ SetLoop/
 ├── manifest.json, *.js, *.html, *.css   ← extension source
 ├── build.js                              ← build script (zero deps)
 ├── icons/                                ← extension + website icons
+├── docs/                                 ← README demo GIF + screenshots
 ├── site/                                 ← Cloudflare Pages root (setloop.app)
 │   ├── index.html                        ← landing page
 │   ├── privacy/index.html                ← auto-mirrored from root privacy.html
@@ -103,8 +124,10 @@ SetLoop/
 └── .github/workflows/build.yml           ← CI: builds extension on every push
 ```
 
-`build.js` produces `dist/` for the Chrome Web Store and syncs `privacy.html` + `icons/` into `site/` so `setloop.app/privacy` always matches the in-extension privacy page.
+`build.js` produces `dist/` for the Chrome Web Store and syncs `privacy.html` + `icons/` into `site/`, so `setloop.app/privacy` always matches the in-extension privacy page.
 
 ## License
 
-MIT
+© 2026 Harrison Daniel. All rights reserved.
+
+This code is **source-available, not open source.** It's published here for portfolio and reference viewing only. You're welcome to read it, but copying, reuse, modification, or redistribution isn't permitted without written permission. See [LICENSE](./LICENSE) for details.
