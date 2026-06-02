@@ -6,5 +6,10 @@
       "WebFetch(domain:developer.chrome.com)",
       "WebFetch(domain:medium.com)"
     ]
+  },
+  "includeCoAuthoredBy": false,
+  "attribution": {
+    "commit": "",
+    "pr": ""
   }
 }
